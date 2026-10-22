@@ -1,0 +1,85 @@
+# First-release contract v1. Scientific settings, not machine-specific paths.
+# No executable reads this file yet.
+schema_version = 1
+project_slug = "rs-urban-expansion"
+study_area = "成都市新都区"
+years = [1992, 2021]
+boundary_reference_year = 2021
+expected_township_count = 9
+target_crs = "EPSG:32648"
+analysis_resolution_m = 30
+display_resolution_m = 15
+float_nodata = -9999.0
+class_nodata = 0
+mask_nodata = 255
+random_seed = 42
+
+[imagery]
+requested_date_1992 = "1992-08-16"
+requested_date_2021 = "2021-02-05"
+date_policy = "keep_requested_unless_teacher_approves_change"
+surface_reflectance_scale = 0.0000275
+surface_reflectance_offset = -0.2
+band_order = ["blue", "green", "red", "nir", "swir1", "swir2"]
+landsat5_bands = [1, 2, 3, 4, 5, 7]
+landsat8_bands = [2, 3, 4, 5, 6, 7]
+pan_rgb_bands = [4, 3, 2]
+pan_band = 8
+reflectance_resampling = "bilinear"
+categorical_resampling = "nearest"
+
+[features]
+order = ["blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"]
+
+[sampling]
+split_group = "group_id"
+holdout_fraction = 0.25
+minimum_labeled_groups_per_class = 8
+minimum_holdout_groups_per_class = 2
+
+[model]
+algorithm = "random_forest"
+n_estimators = 300
+min_samples_leaf = 2
+max_features = "sqrt"
+class_weight = "balanced_subsample"
+n_jobs = -1
+
+[postprocess]
+sieve_threshold_pixels = 4
+connectivity = 8
+
+[evaluation]
+overall_accuracy_strictly_greater_than = 0.75
+built_up_f1_target = 0.75
+class_order = [1, 2, 3, 4, 5]
+
+[analysis]
+elapsed_years = 29
+comparison_mask = "intersection_of_valid_pixels"
+area_unit = "km2"
+
+[[classes]]
+code = 1
+name = "建设用地"
+color = "#D95F02"
+
+[[classes]]
+code = 2
+name = "耕地"
+color = "#E6C84F"
+
+[[classes]]
+code = 3
+name = "其他植被"
+color = "#2E8B57"
+
+[[classes]]
+code = 4
+name = "水域"
+color = "#377EB8"
+
+[[classes]]
+code = 5
+name = "裸地"
+color = "#B69C7D"

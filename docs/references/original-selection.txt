@@ -1,0 +1,515 @@
+# 工程实践任务3：遥感分类建模技术选型与实施方案
+
+初步选型：传统机器学习方案
+
+经过对任务要求、Landsat 官方数据规范、GDAL 工具链和相关城市扩张研究的核查，我建议采用：
+
+Python + GDAL + QGIS + scikit-learn（随机森林）+ GeoPandas。
+
+这套方案能够覆盖遥感预处理、监督分类、精度评价、街道级空间统计和成果输出，不需要训练复杂的深度学习模型，也不需要额外开发 Web 平台。
+
+## 一、首先明确技术路线
+
+1992 年 Landsat 5 TM + 2021 年 Landsat 8 OLI/TIRS
+
+两期遥感影像、研究区边界、街道边界
+
+GDAL + NumPy
+
+校正、云掩膜、融合、裁剪、波段组合
+
+QGIS
+
+样本标注、空间检查、地图制作
+
+scikit-learn：随机森林分类器
+
+城市建设用地、耕地、植被、水域等
+
+Rasterio + GDAL
+
+两期 GeoTIFF、Shapefile
+
+GeoPandas + Pandas
+
+城市扩张分析、街道面积统计
+
+最终交付
+
+源代码 · 分类地图 · GIS 数据 · 混淆矩阵 · 精度报告 · 城市扩张分析报告
+
+### 调研发现：任务书有两处技术表述需要修正
+
+1\. Landsat 原始波段数量与任务书不一致。
+
+依据美国地质调查局 USGS 的官方定义：
+
+| 遥感卫星               | 实际传感器波段 | 本次主要使用              |
+| ------------------ | ------- | ------------------- |
+| Landsat 4/5 TM     | 7 个     | 6 个反射波段             |
+| Landsat 8 OLI/TIRS | 11 个    | 6 个对应反射波段，另按需使用全色波段 |
+
+任务书中的“17 波段”和“17+9 波段”不属于这两类传感器的标准原始波段数量。可能指经过处理、融合或特征扩展后的数据，需要与教师确认，不能通过重复波段来凑数。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.usgs.gov\&sz=32)
+
+U.S. Geological Survey
+
++1
+
+
+
+2\. 2021 年 15m 分辨率需要特别处理。
+
+Landsat 8 的可见光、近红外等常用多光谱波段原始分辨率为 30m，只有 B8 全色波段为 15m。若要获得带有真实空间细节增强的 15m 彩色融合影像，需使用全色锐化（Pansharpening）；GDAL 提供了相应工具。单纯把 30m 影像重采样成 15m，并不会增加真实空间细节。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.usgs.gov\&sz=32)
+
+U.S. Geological Survey
+
++1
+
+
+
+因此，后续实施应区分原始传感器波段、人工构建的分类特征、影像像元尺寸以及影像实际空间分辨能力。
+
+## 二、研究区域选择：确定成都市新都区
+
+三个区域都能完成任务，但如果兼顾分类难度、数据处理成本、成果质量，我更推荐 新都区。
+
+[华都云境悦府，成都华都云境悦府房价，楼盘户型，周边配套，交通地图，新都区石板滩街道狮子湖路555号 - 安居客](https://images.openai.com/static-rsc-4/RmmCAf_RKt20RktoL_vlTAautZ_DflhAt2OixJ6FSkoNf-SG0FALru0tQ3ATB-AroAZ7JoHtNXtpfEKH37zNdvCLMIloTtIvniR7Iq-n-jc4-g7O3sxlAGMuh2xlx3LM4q3sik56dF5GaOxI0aY4ojMa1sfFk6adV9HS662WH5o?purpose=inline)
+
+成都市新都区
+
+首选研究区
+
+地貌主体为平坝，兼有台地，城镇建设用地与农田、植被具有较好的对比条件。适合开展像元级监督分类及城市扩张统计。
+
+[image](https://www.google.com/s2/favicons?domain=https://bkso.baidu.com\&sz=32)
+
+百度百科
+
++1
+
+
+
+[成都龙泉山城市森林公园片区：建设世界级品质的城市绿心|界面新闻](https://images.openai.com/static-rsc-4/Xtu5gtS6vToXlpw4yd7UUnEQQE063y3ca9D5iJ-a92qHFdA0PqoR2zTiYlP638Dc2r_oKAjWhAYOvvIc8GwZ7UMXOenW52XkFQWYrEa14YtkH3bAkIvlJYgYNgTlBhTFCN_qEEas-3mJnNMO-LY0UBl0iVNyJCuY5SQUm6gax5g?purpose=inline)
+
+成都市龙泉驿区
+
+备选：城市发展特征突出
+
+经开区及汽车产业发展具有较好的分析题材，但龙泉山及丘陵地貌会增加山地阴影、植被等干扰，分类需要更仔细的样本设计。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.longquanyi.gov.cn\&sz=32)
+
+龙泉驿区政府
+
++1
+
+
+
+[Chengdu Shuangliu International airport (China) NOTAM and informations ZUUU CTU](https://images.openai.com/static-rsc-4/f3ElBhpsjbJnOFsQI8YTI-_HJdVmB70xJUv1Eck8fsUaog-LnPlbwO3dKsIycPLwUuYVLLWcgQdueiOd9ctVED_Q2GYnf9_I-5Nn34adawtjNMbiXDQRkV6aDDi-Xjz2iugTSjdjmP647EtjnLOFFnR1K26tDkhEju7LobdsG2c?purpose=inline)
+
+成都市双流区
+
+备选：城市扩张与航空枢纽
+
+机场、大规模道路和城镇区域有利于展示空间变化，但机场设施、裸地和建设用地容易产生分类混淆，区划及管理边界也需额外核对。
+
+[image](https://www.google.com/s2/favicons?domain=https://zh.wikisource.org\&sz=32)
+
+维基文库
+
++1
+
+
+
+新都区还有一个直接影响成果设计的特点：2021 年共有 7 个街道、2 个镇。因此，我建议将最小统计单位统一定义为“街道（镇）级行政单元”，9 个单位都要覆盖，不能遗漏两个镇。
+
+[image](https://www.google.com/s2/favicons?domain=https://xzqh.org\&sz=32)
+
+行政区划网
+
+
+
+另外，新都区在 2019 年进行过乡镇街道调整。做 1992—2021 年对比时，建议统一采用经过核验的 2021 年行政边界，把 1992 年的分类结果也统计到这套空间单元内，避免行政区划变化影响比较结果。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.chengdu.gov.cn\&sz=32)
+
+成都市政府官网
+
+
+
+研究名称可暂定为：
+
+《基于 Landsat 遥感影像与随机森林分类的成都市新都区 1992—2021 年城市扩张分析》
+
+需要说明：目前的区域选择是基于地貌和任务适配性的判断，还应通过实际影像可用性、云覆盖和街镇边界完整性完成最终数据验收。
+
+## 三、最终技术栈确定
+
+推荐以 Windows 11 为开发环境，优先使用成熟、免费、文档完善的工具。
+
+| 技术模块   | 确定采用                    | 具体作用                        |
+| ------ | ----------------------- | --------------------------- |
+| 开发语言   | Python 3.11             | 完成所有数据处理和分类逻辑               |
+| 环境管理   | Miniforge + conda-forge | 解决 Windows 下 GDAL 等地理库的安装依赖 |
+| 遥感预处理  | GDAL + NumPy            | 影像读取、辐射数据转换、配准、裁剪、波段组合      |
+| 栅格处理   | Rasterio                | GeoTIFF 读写、像元数据读取           |
+| GIS 软件 | QGIS 3.44 LTR           | 训练样本标注、图层检查、地图制图            |
+| 分类算法   | scikit-learn            | 训练随机森林模型、预测地物类别             |
+| 分类去噪   | GDAL + SciPy            | 消除孤立像元和小面积噪声                |
+| 空间统计   | GeoPandas + Shapely     | 按街镇边界裁剪、相交、计算城市面积           |
+| 统计和制图  | Pandas + Matplotlib     | 变化统计表、混淆矩阵、扩张趋势图            |
+| 模型保存   | Joblib                  | 保存并复用训练完成的分类模型              |
+
+QGIS 官方当前提供 3.44 长期支持版（LTR），其定位就是优先保证稳定性，适合课程项目。
+
+[image](https://www.google.com/s2/favicons?domain=https://qgis.org\&sz=32)
+
+QGIS
+
+
+
+你之前已经安装了 ENVI，因此它也可以用于检查影像、观察波段和辅助验证，不过主流程仍然由 Python + GDAL 完成，满足任务书规定。
+
+### 分类算法为什么选择随机森林？
+
+| 对比项目    | 随机森林 RF | 支持向量机 SVM   | 深度学习 U-Net |
+| ------- | ------- | ----------- | ---------- |
+| 小规模标注样本 | 适合      | 适合          | 较依赖充足样本    |
+| 多波段特征   | 支持      | 支持          | 支持         |
+| 参数调整    | 相对简单    | 对参数、特征缩放较敏感 | 较复杂        |
+| 训练资源需求  | 较低      | 中等          | 较高         |
+| 适合课程任务  | 最推荐     | 可作为对照       | 没有必要       |
+
+随机森林由多棵决策树构成，能够处理多个波段及指数特征。scikit-learn 已提供完整的训练、预测和参数配置接口。
+
+[image](https://www.google.com/s2/favicons?domain=https://scikit-learn.org\&sz=32)
+
+scikit-learn 1.9.1 documentation
+
+
+
+最终算法决策：以随机森林为唯一必须实现的主分类器。 SVM 作为可选对照，不列入必做范围。
+
+建议初始参数：
+
+```
+RandomForestClassifier(    n_estimators=300,    min_samples_leaf=2,    max_features="sqrt",    class_weight="balanced_subsample",    random_state=42,    n_jobs=-1)
+```
+
+这是初始配置，不代表已经达到 75% 准确率。需要通过实际独立验证集进行检验。
+
+## 四、数据选型与获取方案
+
+这部分是目前最需要先落实的，因为数据是否完整，直接决定后续代码能否运行。
+
+| 数据              | 推荐来源               | 使用方案                                             |
+| --------------- | ------------------ | ------------------------------------------------ |
+| 1992 年影像        | USGS EarthExplorer | Landsat 4-5 TM Collection 2 Level-2，优先 Landsat 5 |
+| 2021 年影像        | USGS EarthExplorer | Landsat 8 Collection 2 Level-2                   |
+| 2021 年 15m 全色数据 | USGS EarthExplorer | 对应场景的 Level-1 B8 及融合所需波段                         |
+| 1990、2021 县区边界  | 教师提供的数据链接          | 核验两期边界和坐标系                                       |
+| 2021 年街镇级边界     | 需单独获取              | 新都区 9 个街镇的完整多边形边界                                |
+
+官方 Landsat 数据可以免费获取。USGS EarthExplorer 支持按区域、时间、云覆盖等条件搜索，也提供 Landsat Collection 2 Level-2 数据。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.usgs.gov\&sz=32)
+
+U.S. Geological Survey
+
++1
+
+
+
+数据入口：USGS EarthExplorer。
+
+你提供的博客园链接实际上是一篇 2018 年的 Landsat 下载教程，不是影像文件下载地址。可以借鉴下载思路，但以 USGS 的现有操作界面和正式产品作为基准。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.cnblogs.com\&sz=32)
+
+博客园
+
+
+
+### 必须处理的三个数据问题
+
+问题一：1992 年与 2021 年拍摄季节不一致
+
+任务书建议分别使用 8 月 16 日与 2 月 5 日，分别属于夏季和冬季。农作物生长状态、裸露土壤及植被反射特征会有所不同，容易影响耕地和城市建设用地的区分。
+
+如果允许更换日期，优先选择相近季节且研究区有效像元覆盖更完整的影像；若必须使用指定日期，则保持日期不变，并在分析报告中注明物候差异带来的误差。
+
+问题二：县级 SHP 不等于街道级 SHP
+
+任务书提供的是县区边界数据，而成果要求统计每个街道的变化。因此必须单独获得含各街镇完整几何边界的数据。
+
+目前已核实 2021 年新都区的街镇名单，但尚未核实到可直接使用、边界完整且符合该年份的 SHP 文件。这应当作为开工前的第一项数据检查。
+
+问题三：辐射校正与 15m 数据需要分开处理
+
+建议直接使用 Level-2 地表反射率数据开展定量分类。该产品已经进行大气校正，代码需要处理反射率缩放系数，例如：
+
+`反射率 = DN × 0.0000275 - 0.2`
+
+不能把它当作未经校正的 Level-1 数据再重复校正。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.usgs.gov\&sz=32)
+
+U.S. Geological Survey
+
+
+
+2021 年的 15m 融合产品则单独处理。由于 Level-2 地表反射率产品不包含经过地表反射率校正的全色 B8，融合时需要使用与 Level-1 数据匹配的辐射处理方式。
+
+[image](https://www.google.com/s2/favicons?domain=https://www.usgs.gov\&sz=32)
+
+U.S. Geological Survey
+
+
+
+## 五、具体算法与流程设计
+
+### 阶段 A：影像预处理
+
+使用 GDAL 完成两期影像处理：
+
+1. 读取影像及元数据，识别波段、地理坐标和无效像元。
+2. 进行地表反射率转换，使用 QA_PIXEL 去除云、云影及其他无效数据。
+3. 统一投影（建议 WGS84 / UTM 48N，EPSG:32648）。
+4. 对齐两期影像空间范围，并按研究区 SHP 裁剪。
+5. 输出 1992 年 30m 影像、2021 年 30m 定量分析影像，以及要求的 2021 年 15m 融合影像。
+
+GDAL 的 `gdalwarp`、`gdal_pansharpen` 可以分别处理坐标转换、裁剪和全色融合。
+
+[image](https://www.google.com/s2/favicons?domain=https://gdal.org\&sz=32)
+
+GDAL documentation
+
++1
+
+
+
+这里建议以两期 30m 地表反射率数据作为定量对比的统一基准，另提供 2021 年 15m 融合影像用于满足预处理交付要求及精细展示。若教师明确要求 2021 年分类图本身为 15m，则再单独验证融合影像的分类结果，不能只通过放大 30m 标签冒充精细分类。
+
+### 阶段 B：遥感地物分类
+
+我们只定义五类，既能够满足任务要求，也能区分容易与城镇建设用地混淆的裸地。
+
+1 · 城镇建设用地
+
+城镇建筑密集区、工业厂区及相关建设地表
+
+2 · 耕地
+
+农田、农作物种植区域
+
+3 · 其他植被
+
+树林、草地等非耕地植被
+
+4 · 水域
+
+河流、湖泊、池塘
+
+5 · 裸地
+
+裸露土壤、部分施工裸地等
+
+类别定义中尤其要注意：城镇建设用地与农村居民点、裸露施工地的界限需要提前统一。报告应说明识别的是遥感意义上的城镇建设用地，而不是直接把所有不透水地表都称为城市建成区。
+
+两期都使用相同类别体系，但分别标注训练样本、分别训练模型，减少两代卫星传感器及拍摄季节的差异带来的影响。
+
+主要分类特征：
+
+| 特征               | 意义               |
+| ---------------- | ---------------- |
+| Blue、Green、Red   | 地物可见光反射特征        |
+| NIR、SWIR1、SWIR2  | 植被、土壤、建设用地等的光谱差异 |
+| NDVI（归一化植被指数）    | 辅助识别植被           |
+| NDBI（归一化建筑指数）    | 辅助识别建设用地         |
+| MNDWI（改进归一化水体指数） | 辅助识别水体           |
+| BSI（裸土指数）        | 辅助区分裸地与建设用地      |
+
+即采用 6 个反射波段 + 4 个指数，共 10 个初始特征。可以在实际验证后删减，但无须强行扩展到 17 个特征。
+
+### 阶段 C：精度评价与分类后处理
+
+QGIS 负责制作训练和验证样本面；Python 负责提取样本像元和训练模型。
+
+建议按训练样本面（而不是把相邻像元完全随机打乱）划分训练区和独立验证区，避免同一地块相邻像元分别进入训练和测试，导致准确率虚高。scikit-learn 的 `GroupShuffleSplit` 可以实现基于样本分组的划分。
+
+[image](https://www.google.com/s2/favicons?domain=https://scikit-learn.org\&sz=32)
+
+scikit-learn 1.9.1 documentation
+
+
+
+验收标准：
+
+| 指标                      | 目标            |
+| ----------------------- | ------------- |
+| Overall Accuracy（总体准确率） | 大于 75%，任务硬性要求 |
+| Confusion Matrix（混淆矩阵）  | 两期分别输出        |
+| Precision / Recall / F1 | 每一类别分别报告      |
+| 城镇建设用地 F1               | 尽量达到 0.75 以上  |
+| 分类去噪                    | 去除经过核验的小型孤立斑块 |
+| 精度计算                    | 使用独立保留的验证样本   |
+
+去噪使用 GDAL 的 `gdal_sieve`，再使用 `gdal_polygonize` 输出 SHP。
+
+[image](https://www.google.com/s2/favicons?domain=https://gdal.org\&sz=32)
+
+GDAL documentation
+
++1
+
+
+
+### 阶段 D：街道级城市扩张分析
+
+对两个年份的城镇建设用地分类结果进行空间叠加，提取：
+
+- 新增建设用地：1992 年为非建设用地、2021 年为建设用地。
+- 持续建设用地：两期均属于建设用地。
+- 减少的建设用地：1992 年为建设用地、2021 年不是。
+
+再与 2021 年街镇边界相交，分别统计每个街镇的城市面积变化。
+
+主要分析指标
+
+以下均为计算方法，不代表已经得到真实统计值。
+
+净扩张面积：
+
+\\[ \Delta A=A\_{2021}-A\_{1992} \\]
+
+平均年度净扩张速度：
+
+\\[ V=\frac{A\_{2021}-A\_{1992}}{29} \\]
+
+年均扩张强度：
+
+\\[ I=\frac{A\_{2021}-A\_{1992}}{29S}\times100\\% \\]
+
+其中 S 为对应街镇总面积。面积统计统一使用平方千米；两期仅能反映区间平均变化，不能断言扩张发生于哪一年。
+
+GeoPandas 支持 `overlay` 空间相交；面积计算前须转为以米为单位的适当投影坐标系，不能直接对经纬度坐标的多边形求平方千米。
+
+[image](https://www.google.com/s2/favicons?domain=https://geopandas.org\&sz=32)
+
+GeoPandas
+
++1
+
+
+
+## 六、项目代码结构与交付安排
+
+按照工程实践的规模，我建议控制在 5 个核心 Python 脚本，不拆成复杂的系统架构。
+
+rs-urban-expansion/
+
+&#x20;data/ — 原始影像、行政边界、训练样本
+
+&#x20;src/ — Python 源代码
+
+01_preprocess.py — 预处理
+
+02_samples.py — 样本提取
+
+03_classify.py — 分类训练与预测
+
+04_evaluate.py — 精度评价
+
+05_analyze.py — 扩张及街镇分析
+
+&#x20;outputs/ — GeoTIFF、SHP、CSV、地图
+
+&#x20;reports/ — 精度报告、分析报告
+
+&#x20;environment.yml — 依赖环境
+
+&#x20;README.md — 运行与结果说明
+
+### 推荐的交付验收表
+
+| 交付物                    | 验收方式                |
+| ---------------------- | ------------------- |
+| 1992 年预处理 GeoTIFF      | 30m、投影正确、研究区覆盖完整    |
+| 2021 年预处理 GeoTIFF      | 15m 融合成果，附 30m 定量影像 |
+| 1992、2021 两期分类 GeoTIFF | 类别编码一致，NoData 正确    |
+| 两期 SHP                 | QGIS 可直接加载，具备地物类别字段 |
+| 精度报告                   | 含独立验证混淆矩阵、准确率及各类 F1 |
+| 街镇变化 CSV               | 覆盖 9 个街镇，面积合计核对正确   |
+| 扩张空间分布图                | 可识别新增和持续建设用地区域      |
+| 源代码                    | 能从原始数据复现主要结果        |
+| 分析报告                   | 说明方法、结果、区域差异及局限     |
+
+## 七、Windows 开发环境如何确定
+
+既然已经采用 Python 与 GDAL，Windows 下不建议在已有普通 Python 环境中直接反复安装不同版本的地理依赖。
+
+建议使用 Miniforge 官方安装入口，并创建独立环境。
+
+```
+mamba create -n rs-city -c conda-forge python=3.11 gdal rasterio geopandas scikit-learn numpy pandas scipy matplotlib seaborn joblib
+
+conda activate rs-city
+```
+
+安装完成后，检查：
+
+```
+python -c "from osgeo import gdal; import rasterio, geopandas, sklearn; print('环境正常')"
+```
+
+然后单独安装 QGIS 3.44 LTR 即可。
+
+不需要额外安装 PyTorch、TensorFlow、CUDA、PostgreSQL/PostGIS、Docker 或前端框架。当前任务完全可以在普通 Windows 电脑上完成。
+
+## 八、开发实施顺序
+
+01
+
+数据验收
+
+确定新都区，核实两期影像、县区边界及 9 个街镇边界。优先解决尚未取得的街镇级 SHP。
+
+02
+
+实现影像预处理
+
+读取元数据、反射率处理、云掩膜、坐标统一、裁剪、15m 融合，检查输出。
+
+03
+
+建立训练样本和分类模型
+
+QGIS 标注两期样本，分别训练随机森林并输出分类 GeoTIFF。
+
+04
+
+评价、去噪和矢量化
+
+独立精度检验，处理孤立斑块，输出两期 SHP。
+
+05
+
+空间变化分析和报告
+
+计算街镇面积，提取扩张热点，绘图并撰写正式报告。
+
+## 最终选型结论
+
+确定采用：成都市新都区 + 两期 Landsat 遥感影像 + Python/GDAL + QGIS + 随机森林 + GeoPandas。
+
+这是符合任务书要求、工程量可控、无需额外构建大型系统的方案。
+
+真正需要优先解决的不是模型，而是数据完整性：特别是 1992 年可用影像、2021 年 15m 融合所需数据，以及新都区 2021 年街镇级完整边界。
+
+只要这三部分数据落实，就可以直接按上述五阶段推进开发，并逐项生成任务书要求的正式交付成果，不需要再更换技术栈。
+
+主要技术依据：USGS 地表反射率产品规范、GDAL 官方文档、scikit-learn 官方文档、QGIS 官方网站。

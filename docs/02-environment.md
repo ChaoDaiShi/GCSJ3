@@ -1,0 +1,73 @@
+# 环境变量、依赖与 Windows 环境
+
+## 1. 三种配置的位置
+
+| 文件 | 存什么 | Git | 当前状态 |
+| --- | --- | --- | --- |
+| `F:\工程实践3\.env` | 本机目录、GDAL 缓存大小 | 忽略 | 已由模板生成 |
+| `F:\工程实践3\.env.example` | 可共享的变量名与默认值 | 保留 | 已创建 |
+| `F:\工程实践3\configs\project.toml` | 投影、波段、类别、采样、模型、指标参数 | 保留 | 已创建，尚无程序读取 |
+| `F:\工程实践3\environment.yml` | Python/GIS 包依赖 | 保留 | 已声明，未安装或求解验证 |
+
+算法参数不塞进 `.env`；机器路径不写死在源码中。第一阶段离线运行，不需要地图 API Key、数据库连接、AI Key 或 Web 服务密钥。EarthExplorer 账号在下载网站使用，无需放入项目。
+
+## 2. 已预留的环境变量
+
+| 名称 | 默认值 | 含义 |
+| --- | --- | --- |
+| RS_DATA_ROOT | `./data` | 原始影像、地图、样本、目录表及中间数据根目录 |
+| RS_OUTPUT_ROOT | `./outputs` | 栅格、矢量、模型、CSV、地图成果根目录 |
+| RS_REPORT_ROOT | `./reports` | 文字报告、评价 JSON 和验收证据根目录 |
+| RS_SCRATCH_ROOT | `./.cache/processing` | GDAL 处理临时目录 |
+| GDAL_CACHEMAX | `512` | GDAL 缓存上限，单位 MB |
+
+未来五个入口统一接受 `--config configs/project.toml --env-file .env`。I 在 P0 实现加载规则：显式命令行参数决定配置文件位置；进程中已设置的环境变量优先于 `.env`；`.env` 缺项采用 `.env.example` 所列程序默认值。这里的默认值是唯一已声明配置口径，不增加备用数据源或路径搜索机制。所有相对路径固定以仓库根目录解析，与启动命令的当前目录无关。
+
+当前 `.env` 只是文本文件，PowerShell、QGIS 和 GDAL 不会自动读取它。未来 Python 入口通过 python-dotenv 加载，并在首次使用 GDAL 之前设置对应参数；临时目录映射到 `CPL_TMPDIR`。这部分逻辑尚未实现。
+
+外置数据示例，修改本机 `.env`：
+
+```dotenv
+RS_DATA_ROOT=F:/rs-data/xindu
+RS_OUTPUT_ROOT=F:/rs-results/xindu/outputs
+RS_REPORT_ROOT=F:/rs-results/xindu/reports
+RS_SCRATCH_ROOT=F:/rs-cache/xindu
+GDAL_CACHEMAX=512
+```
+
+目录换位置不改变内部结构；含空格的路径用双引号包围。不要提交真实 `.env`。
+
+## 3. 环境准备方案（未来执行，本次未安装）
+
+Python 固定 3.11。GIS 依赖统一来自 conda-forge，同一个环境内安装 GDAL/Rasterio/GeoPandas，避免各自混装。QGIS 使用 3.44 LTR 独立桌面安装；该 LTR 在本次核查的官方下载页面仍提供。[QGIS 官方下载](https://qgis.org/download/)
+
+新工具建议位置：Miniforge `F:\rs-tools\miniforge3`，Python 环境 `F:\rs-tools\envs\rs-city`，包缓存 `F:\rs-tools\cache\conda-pkgs`，安装临时目录 `F:\rs-tools\tmp`，QGIS `F:\rs-tools\QGIS-3.44`。这些是未来安装位置，本次没有创建安装或改变全局环境变量。
+
+先从 [Miniforge 官方仓库](https://github.com/conda-forge/miniforge) 下载 Windows 安装器，选择上述 F 盘路径。已有可用 Miniforge 时可使用现有安装；不要卸载或替换 C 盘工具。当前 PowerShell 的命令检索发现 Python 3.11，未发现 PATH 中的 conda/mamba；这不代表整台机器没有其他安装。
+
+在能够调用 conda 的 PowerShell 中执行以下命令；若普通终端尚未加载 conda，使用安装器提供的 Miniforge PowerShell 入口：
+
+```powershell
+Set-Location -LiteralPath 'F:\工程实践3'
+New-Item -ItemType Directory -Force -Path 'F:\rs-tools\envs', 'F:\rs-tools\cache\conda-pkgs', 'F:\rs-tools\tmp' | Out-Null
+$env:CONDA_PKGS_DIRS = 'F:\rs-tools\cache\conda-pkgs'
+$env:TEMP = 'F:\rs-tools\tmp'
+$env:TMP = 'F:\rs-tools\tmp'
+conda env create --prefix 'F:\rs-tools\envs\rs-city' --file .\environment.yml
+conda activate 'F:\rs-tools\envs\rs-city'
+python -c "from osgeo import gdal; import rasterio, geopandas, sklearn; print(gdal.VersionInfo()); print('GIS imports OK')"
+gdalinfo --version
+python -m osgeo_utils.gdal_pansharpen --help
+```
+
+这些命令只设置当前终端的缓存与临时目录。测试成功后记录实装版本；依赖声明目前只固定 Python 主次版本，**不是经过求解的锁文件**。后续在环境验收通过后导出 Windows 显式包清单到 `reports/acceptance/environment-win-64.txt`，归档复现版本，不把未验证版本写成已可运行。
+
+```powershell
+conda list --explicit | Set-Content -LiteralPath .\reports\acceptance\environment-win-64.txt -Encoding utf8
+```
+
+## 4. 后续运行方式
+
+开发完成且真实输入到位后，统一从仓库根目录运行五个脚本。参数契约见[公共契约](03-contracts.md)。当前执行会因为入口尚不存在而失败，因此本次不运行这些业务命令。
+
+不需要 npm、Docker、CUDA、PyTorch、数据库或服务器。GDAL_DATA/PROJ_DATA 不手写到其他软件目录，使用所激活 conda 环境自带配置。

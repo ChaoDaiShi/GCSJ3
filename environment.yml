@@ -1,0 +1,19 @@
+# Dependency declaration only. Not installed or solver-verified in this initialization.
+name: rs-city
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - gdal
+  - rasterio
+  - numpy
+  - pandas
+  - geopandas
+  - shapely
+  - scikit-learn
+  - scipy
+  - matplotlib
+  - joblib
+  - python-dotenv
+  - pytest

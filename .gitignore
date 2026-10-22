@@ -1,0 +1,52 @@
+# Machine-local settings
+.env
+.env.*
+!.env.example
+
+# Local tools, environments and caches
+.conda/
+.venv/
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data and generated products: retain directory markers and instructions only
+/data/raw/**
+!/data/raw/**/
+!/data/raw/**/.gitkeep
+/data/interim/**
+!/data/interim/**/
+!/data/interim/**/.gitkeep
+/data/processed/**
+!/data/processed/**/
+!/data/processed/**/.gitkeep
+/data/samples/**
+!/data/samples/**/
+!/data/samples/**/.gitkeep
+/outputs/**
+!/outputs/**/
+!/outputs/**/.gitkeep
+!/outputs/**/README.md
+/reports/**
+!/reports/**/
+!/reports/**/.gitkeep
+!/reports/**/README.md
+/qgis/*.qgz
+/qgis/*.qgs
+/qgis/*.qgd
+/qgis/*.qgz~
+
+# Local catalog rows may contain local paths; header templates are tracked
+/data/catalog/*.csv
+!/data/catalog/*.example.csv
+
+# Editors and OS
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini
+*.log
