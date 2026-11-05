@@ -1,8 +1,27 @@
-"""Sample processing, 10-band feature extraction, and stratified group splitting.
+"""样本处理、10波段特征提取与空间分层分组留出模块（P1-B）。
 
-Module owner: B (samples).
-Public interface:
-  build_samples(ctx: ProjectContext, year: int) -> SampleData
+主要功能与科学处理流程：
+1. calculate_indices:
+   - 基于 6 个基础地表反射率波段计算 4 项关键遥感光谱指数：
+     * 归一化植被指数 NDVI  = (NIR - Red) / (NIR + Red)
+     * 归一化建筑指数 NDBI  = (SWIR1 - NIR) / (SWIR1 + NIR)
+     * 改进归一化水体指数 MNDWI = (Green - SWIR1) / (Green + SWIR1)
+     * 裸土指数 BSI         = ((SWIR1 + Red) - (NIR + Blue)) / ((SWIR1 + Red) + (NIR + Blue))
+   - 严密检测除零异常与有限值范围，任一分母为 0 或出现 NaN/NoData 时，所有 10 项特征均置为 -9999.0。
+
+2. generate_features_raster:
+   - 分块流式读取 sr_30m.tif，生成 10 波段特征栅格 features_30m.tif 及有效性掩膜 valid_features_30m.tif。
+
+3. split_sample_groups:
+   - 依据空间地块单元（group_id）和地类编码（class_id）执行分层分组随机划分（GroupShuffleSplit）；
+   - 保证同属一个物理地块的所有像元必须归于同一子集（要么全在训练集，要么全在留出集），杜绝空间自相关导致的精度虚高。
+
+4. extract_pixel_samples:
+   - 将样本多边形与特征栅格进行空间重叠分析，提取多边形内部所有有效像元的特征与空间坐标；
+   - 严格核验训练集与验证集的像元坐标交集为空、地块组交集为空。
+
+5. build_samples:
+   - 串联上述流程，固化划分方案并输出不可篡改的 SHA256 校验码与采样独立性审计报告。
 """
 
 from __future__ import annotations
@@ -23,6 +42,7 @@ from sklearn.model_selection import GroupShuffleSplit
 
 from rs_urban.contracts import ProjectContext, SampleData
 
+# 样本 CSV 导出的标准字段名列表
 SAMPLE_CSV_FIELDNAMES = [
     "sample_id", "group_id", "year", "class_id",
     "row", "col", "x", "y",
@@ -30,6 +50,7 @@ SAMPLE_CSV_FIELDNAMES = [
     "ndvi", "ndbi", "mndwi", "bsi",
 ]
 
+# 10 波段特征栅格默认波段排列顺序
 DEFAULT_FEATURE_ORDER = [
     "blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"
 ]
@@ -40,21 +61,32 @@ def calculate_indices(
     valid_sr: np.ndarray,
     float_nodata: float = -9999.0,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Calculate 10 features (6 SR bands + 4 spectral indices) from a 6-band SR array.
+    """根据 6 波段地表反射率数组计算 4 项遥感光谱指数，合成 10 波段特征矩阵。
 
-    sr_arr shape: (6, H, W) in order: blue, green, red, nir, swir1, swir2
-    valid_sr shape: (H, W), values: 1=valid, 0=in-area invalid, 255=outside area
+    输入数组规格：
+    - sr_arr 形状为 (6, H, W)，波段顺序为：blue, green, red, nir, swir1, swir2；
+    - valid_sr 形状为 (H, W)，值定义为：1=有效，0=区内无效，255=区外。
 
-    Formulas:
-      NDVI  = (nir - red) / (nir + red)
-      NDBI  = (swir1 - nir) / (swir1 + nir)
-      MNDWI = (green - swir1) / (green + swir1)
-      BSI   = ((swir1 + red) - (nir + blue)) / ((swir1 + red) + (nir + blue))
+    指数计算公式：
+      - NDVI  = (nir - red) / (nir + red)                [表征植被茂密程度]
+      - NDBI  = (swir1 - nir) / (swir1 + nir)            [表征城镇不透水面及建筑覆盖]
+      - MNDWI = (green - swir1) / (green + swir1)        [表征地表开阔水体特征]
+      - BSI   = ((swir1 + red) - (nir + blue)) / ((swir1 + red) + (nir + blue)) [表征裸土与未利用地]
 
-    Rule:
-      When any denominator is 0, any input band is NoData/NaN/Inf, or valid_sr != 1,
-      all 10 features for that pixel are marked as float_nodata (-9999.0).
-      valid_features is 1 if valid, 0 if in-area invalid, and 255 if outside study area.
+    科学计算与异常保护规则：
+      - 当任一指数分母为 0，或任一输入波段为 NaN/Inf/NoData，或 valid_sr != 1 时，
+        该像元所有 10 项特征均统一置为 float_nodata (-9999.0)；
+      - 输出的 valid_features 掩膜中：1 表示有效像元，0 表示研究区内无效/除零像元，255 表示研究区外。
+
+    Args:
+        sr_arr (np.ndarray): 6 波段地表反射率浮点矩阵，形状 (6, H, W)。
+        valid_sr (np.ndarray): 像元有效性掩膜矩阵，形状 (H, W)。
+        float_nodata (float, optional): 无效值填充浮点数。默认为 -9999.0。
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]:
+            - features: 包含 10 个特征波段的 float32 数组，形状为 (10, H, W)；
+            - valid_features: uint8 有效特征掩膜，形状为 (H, W)。
     """
     blue = sr_arr[0]
     green = sr_arr[1]
@@ -63,17 +95,18 @@ def calculate_indices(
     swir1 = sr_arr[4]
     swir2 = sr_arr[5]
 
+    # 分别计算 4 个指数的分母项
     denom_ndvi = nir + red
     denom_ndbi = swir1 + nir
     denom_mndwi = green + swir1
     denom_bsi = (swir1 + red) + (nir + blue)
 
-    # Check finite and non-nodata in all 6 input bands
+    # 检查 6 个反射率波段是否均为有限实数且不等于 NoData
     finite_mask = np.ones(valid_sr.shape, dtype=bool)
     for b in range(6):
         finite_mask &= np.isfinite(sr_arr[b]) & (sr_arr[b] != float_nodata)
 
-    # Check non-zero denominators
+    # 检查所有分母是否均非零
     nonzero_denom = (
         (denom_ndvi != 0.0)
         & (denom_ndbi != 0.0)
@@ -81,8 +114,10 @@ def calculate_indices(
         & (denom_bsi != 0.0)
     )
 
+    # 综合判定有效像元掩膜
     is_valid = (valid_sr == 1) & finite_mask & nonzero_denom
 
+    # 计算 4 项指数，若无效则填入 float_nodata
     with np.errstate(divide="ignore", invalid="ignore"):
         ndvi = np.where(is_valid, (nir - red) / denom_ndvi, float_nodata).astype(np.float32)
         ndbi = np.where(is_valid, (swir1 - nir) / denom_ndbi, float_nodata).astype(np.float32)
@@ -93,13 +128,16 @@ def calculate_indices(
             float_nodata,
         ).astype(np.float32)
 
+    # 同样屏蔽原始 6 个波段在无效区域的数值
     masked_sr = [
         np.where(is_valid, sr_arr[b], float_nodata).astype(np.float32)
         for b in range(6)
     ]
 
+    # 沿第 0 轴堆叠拼接 10 个特征
     features = np.stack(masked_sr + [ndvi, ndbi, mndwi, bsi], axis=0)
 
+    # 构建 valid_features 掩膜：研究区外为 255，有效像元为 1，区内无效为 0
     valid_features = np.zeros(valid_sr.shape, dtype=np.uint8)
     valid_features[valid_sr == 255] = 255
     valid_features[is_valid] = 1
@@ -114,7 +152,20 @@ def generate_features_raster(
     out_valid_features_path: Path,
     config: dict[str, Any],
 ) -> tuple[Path, Path]:
-    """Generate 10-band Float32 features GeoTIFF and 1-band Byte valid_features GeoTIFF."""
+    """生成 10 波段 Float32 特征 GeoTIFF 及单波段 Byte 有效掩膜 GeoTIFF。
+
+    采用滑动分块窗口（block_windows）机制，逐块计算并写入磁盘，控制内存开销。
+
+    Args:
+        sr_path (Path): 输入的 6 波段地表反射率 GeoTIFF 路径。
+        valid_sr_path (Path): 输入的地表反射率有效掩膜路径。
+        out_features_path (Path): 输出的 10 波段特征栅格保存路径。
+        out_valid_features_path (Path): 输出的有效特征掩膜保存路径。
+        config (dict[str, Any]): 项目全局配置字典。
+
+    Returns:
+        tuple[Path, Path]: (out_features_path, out_valid_features_path)
+    """
     float_nodata = float(config.get("float_nodata", -9999.0))
     feature_order = config.get("features", {}).get("order", DEFAULT_FEATURE_ORDER)
 
@@ -138,8 +189,10 @@ def generate_features_raster(
 
         with rasterio.open(out_features_path, "w", **meta_features) as dst_f, \
              rasterio.open(out_valid_features_path, "w", **meta_valid) as dst_vf:
+            # 记录波段描述信息（band descriptions）
             dst_f.descriptions = tuple(feature_order)
 
+            # 遍历分块窗口执行计算
             for _, window in src_sr.block_windows():
                 sr_block = src_sr.read(window=window).astype(np.float32)
                 valid_block = src_valid.read(1, window=window)
@@ -162,11 +215,29 @@ def split_sample_groups(
     min_holdout_groups: int = 2,
     existing_split_path: Path | None = None,
 ) -> dict[str, str]:
-    """Perform stratified GroupShuffleSplit on unique group_ids by class_id.
+    """基于地块单元（group_id）和地类（class_id）执行分层分组随机抽取（GroupShuffleSplit）。
 
-    Returns a dict mapping group_id -> 'train' | 'holdout'.
-    If existing_split_path exists, reloads and validates the frozen split.
+    科学机制：
+    - 若预先存在已冻结的 split.json 文件，则直接读取重用历史划分，保障实验严格可复现；
+    - 针对每个地类（class_id），按 group_id 进行无交集抽取，比例约为 holdout_fraction（默认 25%）；
+    - 严格检查：每个 group_id 必须唯一属于一个 class_id；
+    - 严格检查：每个类别的标注地块组数必须满足最低阈值（默认每类至少 8 组，留出验证组至少 2 组）。
+
+    Args:
+        labels_gdf (gpd.GeoDataFrame): 包含 group_id、class_id 和 geometry 的样本矢量 GeoDataFrame。
+        random_seed (int, optional): 随机数种子。默认为 42。
+        holdout_fraction (float, optional): 留出集地块组比例。默认为 0.25。
+        min_labeled_groups (int, optional): 每类最少包含的地块组数。默认为 8。
+        min_holdout_groups (int, optional): 每类最少包含的留出验证地块组数。默认为 2。
+        existing_split_path (Path | None, optional): 预先存在的划分元数据文件路径。
+
+    Returns:
+        dict[str, str]: group_id -> 'train' | 'holdout' 的归属映射字典。
+
+    Raises:
+        ValueError: 当地块跨多个类别，或类别地块组数不足时抛出。
     """
+    # 优先复用已存在的冻结划分方案
     if existing_split_path is not None and existing_split_path.exists():
         with open(existing_split_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -175,7 +246,7 @@ def split_sample_groups(
             if gdf_groups.issubset(saved_groups.keys()):
                 return {g: saved_groups[g] for g in gdf_groups}
 
-    # Verify that each group belongs to exactly one class
+    # 核验每一个 group_id 是否严格只对应一个 class_id
     group_classes = labels_gdf.groupby("group_id")["class_id"].unique()
     for g_id, c_ids in group_classes.items():
         if len(c_ids) > 1:
@@ -186,6 +257,7 @@ def split_sample_groups(
     split_map: dict[str, str] = {}
     classes_present = sorted(labels_gdf["class_id"].unique())
 
+    # 按类别分别开展分层分组抽取
     for class_id in classes_present:
         class_df = labels_gdf[labels_gdf["class_id"] == class_id]
         unique_groups = sorted(class_df["group_id"].unique())
@@ -229,10 +301,31 @@ def extract_pixel_samples(
     split_map: dict[str, str],
     year: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-    """Extract valid pixel centers within sample polygons into train and holdout datasets.
+    """提取样本矢量多边形覆盖范围内的全部有效像元中心点特征，形成训练集与独立留出集。
+
+    执行流程与校验要求：
+    1. 计算每个多边形的外包矩形窗口，局部读取特征与掩膜以节省内存；
+    2. 使用 geometry_mask 提取落入多边形内部的栅格像元（全包含判定）；
+    3. 全局记录已采样像元坐标 (row, col)，若同一坐标出现在不同组或类别中，抛出异常；
+    4. 过滤有效掩膜 != 1 或特征值为 NaN/NoData 的像元；
+    5. 计算像元中心投影坐标 (x, y)，与 10 项特征一起打包为 DataFrame；
+    6. 强力校验：训练组与留出组无交集、训练像元坐标与留出像元坐标无交集。
+
+    Args:
+        features_path (Path): 10 波段特征栅格文件路径。
+        valid_features_path (Path): 特征有效性掩膜文件路径。
+        labels_gdf (gpd.GeoDataFrame): 样本矢量图层。
+        split_map (dict[str, str]): 地块组划分映射表 (group_id -> 'train'|'holdout')。
+        year (int): 采样年份。
 
     Returns:
-      train_df, holdout_df, summary_dict
+        tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+            - train_df: 训练集表格；
+            - holdout_df: 独立留出集表格；
+            - summary: 包含各类样本数量、地块组数统计的摘要字典。
+
+    Raises:
+        ValueError: 当存在像元坐标重复赋予不同类别，或训练集与留出集产生空间交叠时抛出。
     """
     train_rows: list[dict[str, Any]] = []
     holdout_rows: list[dict[str, Any]] = []
@@ -253,7 +346,7 @@ def extract_pixel_samples(
             class_id = int(row["class_id"])
             split_type = split_map.get(group_id, "train")
 
-            # Bounding box window for efficiency
+            # 基于几何边界确定局部读取窗口
             bounds = geom.bounds
             window = rasterio.windows.from_bounds(*bounds, transform=transform).round_offsets().round_lengths()
             r_start = max(0, int(window.row_off) - 1)
@@ -267,6 +360,7 @@ def extract_pixel_samples(
             win = rasterio.windows.Window(c_start, r_start, c_stop - c_start, r_stop - r_start)
             win_transform = rasterio.windows.transform(win, transform)
 
+            # 仅保留多边形覆盖的内部像元
             win_mask = rasterio.features.geometry_mask(
                 [geom],
                 out_shape=(int(win.height), int(win.width)),
@@ -278,13 +372,13 @@ def extract_pixel_samples(
             vf_block = src_vf.read(1, window=win)
             f_block = src_f.read(window=win)
 
-            # Find matching pixels
+            # 遍历几何掩膜覆盖的所有像元
             matched_indices = np.argwhere(win_mask)
             for r_win, c_win in matched_indices:
                 r_global = r_start + r_win
                 c_global = c_start + c_win
 
-                # Check duplicate pixel
+                # 检查像元是否已被处理，防范标签冲突
                 coord = (r_global, c_global)
                 if coord in seen_pixels:
                     prev_group, prev_class = seen_pixels[coord]
@@ -297,7 +391,7 @@ def extract_pixel_samples(
 
                 seen_pixels[coord] = (group_id, class_id)
 
-                # Skip invalid or denominator-zero pixels
+                # 跳过有效掩膜不合格或特征值异常的像元
                 if vf_block[r_win, c_win] != 1:
                     continue
 
@@ -305,7 +399,7 @@ def extract_pixel_samples(
                 if not np.all(np.isfinite(feat_vals)) or np.any(feat_vals == -9999.0):
                     continue
 
-                # Pixel center coordinates
+                # 计算像元中心点的空间投影坐标 (x, y)
                 cx, cy = rasterio.transform.xy(transform, r_global, c_global, offset="center")
 
                 record = {
@@ -337,18 +431,19 @@ def extract_pixel_samples(
     train_df = pd.DataFrame(train_rows, columns=SAMPLE_CSV_FIELDNAMES)
     holdout_df = pd.DataFrame(holdout_rows, columns=SAMPLE_CSV_FIELDNAMES)
 
-    # Validate disjoint groups and pixel coordinates
+    # 严密核验训练组与留出组是否互斥
     train_groups = set(train_df["group_id"].unique()) if not train_df.empty else set()
     holdout_groups = set(holdout_df["group_id"].unique()) if not holdout_df.empty else set()
     if train_groups.intersection(holdout_groups):
         raise ValueError(f"Train and holdout groups intersect: {train_groups.intersection(holdout_groups)}")
 
+    # 严密核验像元坐标是否互斥
     train_coords = set(zip(train_df["row"], train_df["col"])) if not train_df.empty else set()
     holdout_coords = set(zip(holdout_df["row"], holdout_df["col"])) if not holdout_df.empty else set()
     if train_coords.intersection(holdout_coords):
         raise ValueError("Train and holdout pixel coordinates intersect.")
 
-    # Class summary
+    # 汇总各类别样本及地块分布情况
     class_summary: dict[int, dict[str, int]] = {}
     classes_present = sorted(labels_gdf["class_id"].unique())
     for c in classes_present:
@@ -370,10 +465,25 @@ def extract_pixel_samples(
 
 
 def build_samples(ctx: ProjectContext, year: int) -> SampleData:
-    """Build 10-band features, freeze stratified sample split, and extract train/holdout datasets.
+    """构建 10 波段特征栅格、固化分组划分元数据并提取训练与留出样本集的主管道。
 
-    Public contract:
-      build_samples(ctx: ProjectContext, year: int) -> SampleData
+    步骤说明：
+    1. 检查输入地表反射率、有效掩膜及人工目视解译样本矢量文件 labels.gpkg；
+    2. 计算并输出 features_30m.tif 与 valid_features_30m.tif；
+    3. 执行基于地块的分层 GroupShuffleSplit 抽取；
+    4. 提取像元样本至 train.csv 与 holdout.csv；
+    5. 计算划分方案的 SHA256 哈希值并保存 split.json；
+    6. 输出中文独立性核查审计报告 reports/accuracy/sampling_{year}.md。
+
+    Args:
+        ctx (ProjectContext): 项目运行上下文。
+        year (int): 目标年份（1992 或 2021）。
+
+    Returns:
+        SampleData: 包含特征栅格与样本 CSV 路径的数据契约对象。
+
+    Raises:
+        FileNotFoundError: 当必要输入文件缺失时抛出。
     """
     sr_path = ctx.data / "processed" / str(year) / "sr_30m.tif"
     valid_sr_path = ctx.data / "processed" / str(year) / "valid_sr_30m.tif"
@@ -386,7 +496,7 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
     if not labels_path.exists():
         raise FileNotFoundError(f"Required input labels vector not found: {labels_path}")
 
-    # Output paths
+    # 规范化输出路径
     features_path = ctx.data / "processed" / str(year) / "features_30m.tif"
     valid_features_path = ctx.data / "processed" / str(year) / "valid_features_30m.tif"
     samples_dir = ctx.data / "processed" / "samples" / str(year)
@@ -396,7 +506,7 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
     holdout_path = samples_dir / "holdout.csv"
     split_path = samples_dir / "split.json"
 
-    # Step 1: Generate 10-band features raster and valid_features raster
+    # 步骤 1：生成 10 波段特征栅格与特征有效掩膜
     generate_features_raster(
         sr_path=sr_path,
         valid_sr_path=valid_sr_path,
@@ -405,7 +515,7 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
         config=ctx.config,
     )
 
-    # Step 2: Read labels GeoPackage
+    # 步骤 2：读取人工标注地块样本
     labels_gdf = gpd.read_file(labels_path, layer="labels")
     target_crs = ctx.config.get("target_crs", "EPSG:32648")
     if labels_gdf.crs is None:
@@ -413,7 +523,7 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
     elif labels_gdf.crs.to_string() != target_crs:
         labels_gdf = labels_gdf.to_crs(target_crs)
 
-    # Step 3: Stratified GroupShuffleSplit
+    # 步骤 3：按地块组分层抽取
     sampling_cfg = ctx.config.get("sampling", {})
     random_seed = int(ctx.config.get("random_seed", 42))
     holdout_fraction = float(sampling_cfg.get("holdout_fraction", 0.25))
@@ -429,7 +539,7 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
         existing_split_path=split_path,
     )
 
-    # Step 4: Extract pixel samples
+    # 步骤 4：提取像元样本
     train_df, holdout_df, summary = extract_pixel_samples(
         features_path=features_path,
         valid_features_path=valid_features_path,
@@ -438,11 +548,11 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
         year=year,
     )
 
-    # Step 5: Save train.csv and holdout.csv
+    # 步骤 5：导出 CSV 数据集
     train_df.to_csv(train_path, index=False, encoding="utf-8")
     holdout_df.to_csv(holdout_path, index=False, encoding="utf-8")
 
-    # Step 6: Compute sha256 hash of split and persist split.json
+    # 步骤 6：计算划分方案的 SHA256 哈希值，写入 split.json
     split_payload = {
         "schema_version": 1,
         "year": year,
@@ -463,7 +573,7 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
     with open(split_path, "w", encoding="utf-8") as f:
         json.dump(split_payload, f, indent=2, ensure_ascii=False)
 
-    # Step 7: Write sampling report to reports/accuracy/sampling_{year}.md
+    # 步骤 7：编写 Markdown 格式的样本独立性核查与分布审计报告
     reports_acc_dir = ctx.reports / "accuracy"
     reports_acc_dir.mkdir(parents=True, exist_ok=True)
     report_path = reports_acc_dir / f"sampling_{year}.md"

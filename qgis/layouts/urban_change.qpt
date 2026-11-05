@@ -1,0 +1,46 @@
+<Layout units="mm" worldFileMap="{00000000-0000-0000-0000-000000000000}" printResolution="300" name="urban_change">
+  <Snapper tolerance="5" snapToGuides="1" snapToItems="1" snapToGrid="0"/>
+  <Grid offsetUnits="mm" resUnits="mm" resolution="10" offsetX="0" offsetY="0"/>
+  <PageCollection>
+    <symbol type="fill" name="" clip_to_extent="1" force_rhr="0" alpha="1">
+      <layer class="SimpleFill" enabled="1" locked="0" pass="0">
+        <Option type="Map">
+          <Option name="color" type="QString" value="255,255,255,255"/>
+          <Option name="style" type="QString" value="solid"/>
+        </Option>
+      </layer>
+    </symbol>
+    <LayoutItem id="" type="65638" position="0,0,mm" size="297,210,mm" frame="false" zValue="0" background="true">
+      <page pageSize="A4" orientation="landscape" width="297" height="210"/>
+    </LayoutItem>
+  </PageCollection>
+  <!-- 主地图: map_main -->
+  <LayoutItem id="map_main" type="65639" position="15,22,mm" size="200,175,mm" frame="true" zValue="1" outlineWidthM="0.3" background="true">
+    <Extent ymin="3380000" xmin="400000" ymax="3440000" xmax="460000"/>
+    <LayerSet/>
+    <AtlasMap scalingMode="2" atlasDriven="0" margin="0.1"/>
+  </LayoutItem>
+  <!-- 主标题: title_text -->
+  <LayoutItem id="title_text" type="65641" position="15,8,mm" size="200,12,mm" frame="false" zValue="2" background="false" halign="1" valign="128">
+    <LabelExpression text="成都市新都区1992—2021年建设用地扩张时空演化图"/>
+    <FontDescription description="SimHei,16,-1,5,75,0,0,0,0,0"/>
+  </LayoutItem>
+  <!-- 图例: legend_main -->
+  <LayoutItem id="legend_main" type="65642" position="220,25,mm" size="65,70,mm" frame="true" zValue="3" outlineWidthM="0.2" background="true">
+    <Title title="变化类型"/>
+    <FontDescription description="SimHei,11,-1,5,75,0,0,0,0,0"/>
+  </LayoutItem>
+  <!-- 指北针: north_main -->
+  <LayoutItem id="north_main" type="65640" position="240,100,mm" size="25,25,mm" frame="false" zValue="4" background="false">
+    <Picture northMode="0" svgBorderColor="0,0,0,255" mode="0" svgFillColor="0,0,0,255" pictureRotation="0"/>
+  </LayoutItem>
+  <!-- 比例尺: scale_main -->
+  <LayoutItem id="scale_main" type="65646" position="220,135,mm" size="65,15,mm" frame="false" zValue="5" background="false" unitLabel="km" numUnitsPerSegment="5" unitType="km" segmentMillimeters="15">
+    <FontDescription description="Arial,8,-1,5,50,0,0,0,0,0"/>
+  </LayoutItem>
+  <!-- 数据源与说明: source_text -->
+  <LayoutItem id="source_text" type="65641" position="220,155,mm" size="65,42,mm" frame="true" zValue="6" outlineWidthM="0.2" background="true" halign="1" valign="32">
+    <LabelExpression text="投影坐标系：WGS 84 / UTM zone 48N (EPSG:32648)&#10;空间分辨率：30 米 (两期共同有效区比较)&#10;数据源：Landsat 5 TM (1992) / Landsat 8 OLI (2021)&#10;变化体系：持续建设/新增建设/减少建设/持续非建&#10;制作基线：工程实践3 (2026-10)"/>
+    <FontDescription description="SimSun,7.5,-1,5,50,0,0,0,0,0"/>
+  </LayoutItem>
+</Layout>

@@ -31,13 +31,13 @@ SHP 必须成套放置，保留同名 `.shp/.shx/.dbf/.prj`，有 `.cpg` 时一�
 
 县区数据不替代街镇多边形，街镇名称表或中心点也不替代街镇边界。须核验年份、9 个单元、街道/镇类型、编码、几何范围和区级覆盖；存在缺口、重叠、错年时记录真实情况并补齐数据，不自动修补为“合格”。地图在线瓦片只作辅助底图，不用于面积计算。
 
-教师数据链接未包含在当前附件中，需由取数人员取得；本轮未确认可直接使用的街镇 SHP。来源和使用说明写入登记表。
+当前未确认可直接使用的 2021 年街镇 SHP。2026-10-29 补充包包含县界候选、市界和参考地图，筛选结果见[边界补充说明](boundary-supplement-2026-10-29.md)；来源和使用说明写入登记表。
 
 2026-10-21 实际整理补充：老师提供的 1992 老版 L1T 保存在 `data/raw/landsat/1992/level1/LT51290391992229BJC00/`；2021 L1TP 保存在对应 `2021/level1/<product_id>/`；标称 1990 年全国县界保存在 `boundaries/county/1990/全国县级区划1990年shp/`。不覆盖新都的旧 129/044 L2 原件保存在 `data/raw/landsat/excluded/`，仅记入 `data/catalog/excluded_scenes.csv`，不放入活动 scenes.csv。L1T 登记采用原 MTL 的场景 ID，processing_level 如实写 L1T。具体文件及试运行状态以 [data/README.md](../data/README.md) 为准；这些 L1 原件不代表已取得冻结方案要求的 L2 SR 输入。
 
 ## 3. 登记表怎样填
 
-本机表已创建但只有表头，**零条真实数据**。模板位于相同目录的 `*.example.csv`，模板进入 Git，本机记录不进入 Git。
+本机表已按实际提供数据登记，当前状态以 `data/catalog/*.csv` 与 `data/README.md` 为准。模板位于相同目录的 `*.example.csv`，模板进入 Git，本机记录不进入 Git。
 
 ### scenes.csv
 

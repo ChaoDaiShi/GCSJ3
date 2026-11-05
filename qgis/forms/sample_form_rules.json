@@ -1,0 +1,149 @@
+{
+  "schema_version": "1.0",
+  "layer_name": "labels",
+  "geometry_type": "MultiPolygon",
+  "crs": "EPSG:32648",
+  "fields": [
+    {
+      "name": "sample_id",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "样本多边形编号",
+      "not_null": true,
+      "unique": true,
+      "editable": true,
+      "description": "要素唯一编号，新绘多边形必须唯一且非空"
+    },
+    {
+      "name": "group_id",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "真实地块组号",
+      "not_null": true,
+      "unique": false,
+      "editable": true,
+      "description": "空间地块组标识，同一真实地块的面共用，作为GroupShuffleSplit划分单位，严禁设为唯一约束"
+    },
+    {
+      "name": "year",
+      "type": "Integer",
+      "widget": "ValueMap",
+      "alias": "影像时相所属年份",
+      "not_null": true,
+      "unique": false,
+      "editable": false,
+      "value_map": {
+        "1992 年": 1992,
+        "2021 年": 2021
+      },
+      "description": "必须与所属图层年度完全一致，严禁跨年混填"
+    },
+    {
+      "name": "class_id",
+      "type": "Integer",
+      "widget": "ValueMap",
+      "alias": "土地覆被类型",
+      "not_null": true,
+      "unique": false,
+      "editable": true,
+      "value_map": {
+        "1 建设用地": 1,
+        "2 耕地": 2,
+        "3 其他植被": 3,
+        "4 水域": 4,
+        "5 裸地": 5
+      },
+      "description": "五类土地利用标准编码，必填"
+    },
+    {
+      "name": "class_name",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "地类名称(自动派生)",
+      "not_null": false,
+      "unique": false,
+      "editable": false,
+      "description": "由 class_id 派生，只读"
+    },
+    {
+      "name": "label_source",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "判读依据来源",
+      "not_null": true,
+      "unique": false,
+      "editable": true,
+      "description": "标注所依据的遥感真彩/假彩影像或参考资料"
+    },
+    {
+      "name": "source_date",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "影像成像日期",
+      "not_null": true,
+      "unique": false,
+      "editable": true,
+      "description": "影像时相证据（如 1992-08-16, 2021-02-05）"
+    },
+    {
+      "name": "annotator",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "标注责任人",
+      "not_null": true,
+      "unique": false,
+      "editable": true,
+      "description": "标注人员受控标识"
+    },
+    {
+      "name": "interpreter",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "复核解译员",
+      "not_null": false,
+      "unique": false,
+      "editable": true,
+      "description": "交叉复核解译员受控标识"
+    },
+    {
+      "name": "split",
+      "type": "String",
+      "widget": "ValueMap",
+      "alias": "数据集划分",
+      "not_null": true,
+      "unique": false,
+      "editable": false,
+      "value_map": {
+        "未分配 (unassigned)": "unassigned",
+        "训练集 (train)": "train",
+        "最终留出集 (holdout)": "holdout"
+      },
+      "description": "由 split.json 自动注入并锁定，严禁手工修改"
+    },
+    {
+      "name": "confidence",
+      "type": "String",
+      "widget": "ValueMap",
+      "alias": "判读置信度",
+      "not_null": false,
+      "unique": false,
+      "editable": true,
+      "value_map": {
+        "高 (high)": "high",
+        "中 (medium)": "medium",
+        "低 (low - 待复核)": "low"
+      },
+      "description": "置信度评估，低置信度需交叉复核"
+    },
+    {
+      "name": "notes",
+      "type": "String",
+      "widget": "TextEdit",
+      "alias": "判读备注",
+      "not_null": false,
+      "unique": false,
+      "editable": true,
+      "description": "边界模糊、争议或过渡带地类说明"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "build_id": "build_20261029_201648",
+  "project": "xindu_1992_2021.qgz",
+  "mode": "development",
+  "target_crs": "EPSG:32648",
+  "config_sha256": "1628512d9c57235ddbd64032da78a4d08e5e0d37b60cf87a5cb8e4cf36253747",
+  "qgis_version": "3.44 LTR",
+  "layers": [],
+  "layouts": [
+    "lulc_1992",
+    "lulc_2021",
+    "urban_change",
+    "township_change"
+  ],
+  "status": "PASSED",
+  "timestamp": "2026-10-29T20:16:48.597082"
+}

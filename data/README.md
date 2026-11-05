@@ -1,8 +1,22 @@
 # 数据目录
 
-原始遥感数据放 `raw/landsat/`，行政边界放 `raw/boundaries/`，参考地图放 `raw/reference_maps/`，标注样本放 `samples/`。真实数据目前均未提供。
+原始遥感数据放 `raw/landsat/`，行政边界放 `raw/boundaries/`，参考地图放 `raw/reference_maps/`，标注样本放 `samples/`。已提供的数据和仍缺少的正式输入见下方整理记录。
 
-`catalog/*.example.csv` 是可提交的表头模板；同名去掉 `.example` 的 CSV 是已创建的本机空登记表，需按真实下载内容填写。各字段和相对路径基准见[数据目录文档](../docs/01-data-layout.md)。
+## 2026-10-29 新增边界与参考资料
+
+已从四个补充包中保存 45 个选定原始文件，生成 3 个便于加载的局部 GPKG。详细来源和限制见[补充说明](../docs/boundary-supplement-2026-10-29.md)及[本机核验报告](../reports/data/2026-10-29-boundary-supplement.md)。
+
+| 可直接打开的文件 | 内容 |
+| --- | --- |
+| `interim/boundary_review/2026-10-29/xindu_historical_candidate.gpkg` | 1 个历史新都县候选面，实际年份未核实 |
+| `interim/boundary_review/2026-10-29/xindu_emap_reference.gpkg` | 1 个新都区候选面；40 个镇点；816 个水系面；583 条高速、729 条国道、2855 条省道、140 条铁路参考要素 |
+| `interim/boundary_review/2026-10-29/xindu_vicinity_admin_points_20080113.gpkg` | 新都附近检索窗口内的 818 个历史地名点，包括邻区；源版本为 2008-01-13 |
+
+此外，2023 年成都市整体面保存在 `raw/reference_maps/vector/chengdu_2023_ruiduobao/`。候选县界原件放在 `raw/boundaries/county/candidates/`，单独登记于 `catalog/boundary_candidates.csv`，未加入正式 2021 年边界入口。电子地图保留自定义 MapInfo 坐标系；水系有 4 个原始无效面，未修复，不直接参与面积计算。
+
+**正式 2021 年新都区县界与 9 个街镇面仍未补齐。** 以下 2026-10-21 内容为前次整理记录；当前缺口以 [data_gaps.md](../reports/data/data_gaps.md) 为准。
+
+`catalog/*.example.csv` 是可提交的表头模板；同名去掉 `.example` 的 CSV 是本机真实数据登记表。各字段和相对路径基准见[数据目录文档](../docs/01-data-layout.md)。
 
 目录外置时修改根目录 `.env` 中的 `RS_DATA_ROOT`，保持其内部结构不变。
 # 2026-10-21 数据整理与试运行

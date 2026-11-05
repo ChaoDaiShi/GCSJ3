@@ -1,14 +1,24 @@
-"""Post-processing, vectorization, and independent accuracy evaluation module (P1-D).
+"""分类后处理、矢量化制图与独立精度评价模块（P1-D）。
 
-Implements:
-1. sieve_classification: Applies GDAL SieveFilter to remove isolated speckles (< 4 pixels)
-   while preserving class boundaries and strictly retaining NoData (0).
-2. vectorize_and_clip: Vectorizes final classification raster, clips to study_area geometry,
-   and exports the complete Shapefile suite (.shp, .shx, .dbf, .prj, .cpg) with UTF-8 encoding.
-3. calculate_confusion_matrix & calculate_class_metrics: Computes 5x5 confusion matrix, OA,
-   precision, recall, and F1 score per class.
-4. check_accuracy_threshold: Enforces strict threshold (OA > 0.75; 0.75 itself fails).
-5. finalize_evaluate: Executes the end-to-end evaluation pipeline for a given year.
+主要功能与科学处理流程：
+1. sieve_classification:
+   - 应用 GDAL SieveFilter 算法滤除孤立微小杂斑（连通度 connectivity=8，像元阈值 threshold_pixels=4）；
+   - 显式传入有效像元二值掩膜，严格保护 NoData（值 0）边界，消除分类结果的“椒盐噪声”。
+
+2. vectorize_and_clip:
+   - 将滤波后的最终分类栅格进行连通域多边形矢量化；
+   - 与新都区法定行政边界（study_area）执行精确几何求交裁剪（intersection），剔除边缘溢出区域；
+   - 计算各图斑面积（平方公里），导出标准的 ESRI Shapefile 矢量文件集合，并显式生成 UTF-8 的 .cpg 编码定义文件。
+
+3. calculate_confusion_matrix & calculate_class_metrics:
+   - 基于空间完全独立的留出验证集（holdout.csv）生成 5x5 混淆矩阵（建设用地、耕地、其他植被、水域、裸地）；
+   - 计算总体精度（OA）、各类精确率（Precision）、召回率（Recall）与 F1 分数。
+
+4. check_accuracy_threshold:
+   - 严格执行准入门槛核验：要求最终分类总体精度必须严格大于 0.75（OA > 0.75，0.75 本身按未达标处理）。
+
+5. finalize_evaluate:
+   - 串联后处理、矢量化裁剪、独立精度评价指标核算、CSV 报表导出与 Markdown/JSON 评估报告编写。
 """
 
 from __future__ import annotations
@@ -21,7 +31,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Automatically configure GDAL_DATA and PROJ_DATA if available in active environment
+# 若当前环境中存在 GDAL/PROJ 资源共享目录，自动配置环境变量以便正确加载投影定义
 _prefix = Path(sys.prefix)
 _gdal_share = _prefix / "Library" / "share" / "gdal"
 if "GDAL_DATA" not in os.environ and _gdal_share.exists():
@@ -42,7 +52,7 @@ from rs_urban.contracts import EvaluationData, ProjectContext
 
 
 # ---------------------------------------------------------------------------
-# 1. Metric Calculations and Threshold Verification
+# 1. 精度评价指标计算与门槛检验（Metric Calculations and Threshold Verification）
 # ---------------------------------------------------------------------------
 
 def calculate_confusion_matrix(
@@ -50,10 +60,25 @@ def calculate_confusion_matrix(
     y_pred: list[int] | np.ndarray,
     class_order: list[int] = [1, 2, 3, 4, 5],
 ) -> tuple[list[list[int]], float]:
-    """Calculate 5x5 confusion matrix and overall accuracy (OA).
+    """计算 5x5 混淆矩阵与总体分类精度（Overall Accuracy, OA）。
 
-    Rows: ground truth classes.
-    Columns: predicted classes.
+    混淆矩阵定义规范：
+      - 行（Rows）：地面真实类别（Ground Truth）；
+      - 列（Columns）：算法预测类别（Predicted Class）。
+      - 主对角线元素表示预测正确的样本数。
+
+    总体精度计算公式：
+      OA = 预测正确的像元总数 / 总样本数
+
+    Args:
+        y_true (list[int] | np.ndarray): 真实地类标签序列。
+        y_pred (list[int] | np.ndarray): 模型预测地类标签序列。
+        class_order (list[int], optional): 地类编码排列顺序。默认为 [1, 2, 3, 4, 5]。
+
+    Returns:
+        tuple[list[list[int]], float]:
+            - matrix: 5x5 混淆矩阵（二维嵌套整数列表）；
+            - oa: 总体精度浮点数（0.0 至 1.0）。
     """
     n_classes = len(class_order)
     class_to_idx = {c: i for i, c in enumerate(class_order)}
@@ -74,7 +99,20 @@ def calculate_class_metrics(
     matrix: list[list[int]],
     class_order: list[int] = [1, 2, 3, 4, 5],
 ) -> list[dict[str, Any]]:
-    """Compute per-class precision, recall, f1, and support from confusion matrix."""
+    """根据混淆矩阵计算每个类别的精确率、召回率、F1 分数及样本支持量。
+
+    计算公式：
+      - Precision（查准率） = TP / (TP + FP)  [对应列求和]
+      - Recall（查全率）    = TP / (TP + FN)  [对应行求和，即 Support]
+      - F1-Score（调和均值） = 2 * (Precision * Recall) / (Precision + Recall)
+
+    Args:
+        matrix (list[list[int]]): 混淆矩阵二维列表。
+        class_order (list[int], optional): 地类编码列表。默认为 [1, 2, 3, 4, 5]。
+
+    Returns:
+        list[dict[str, Any]]: 包含各类别指标的字典列表。
+    """
     n_classes = len(class_order)
     metrics: list[dict[str, Any]] = []
 
@@ -99,15 +137,22 @@ def calculate_class_metrics(
 
 
 def check_accuracy_threshold(oa: float, threshold: float = 0.75) -> bool:
-    """Enforce strict OA threshold: OA strictly greater than threshold.
+    """硬性校验总体精度是否达标：要求 OA 必须严格大于指定阈值。
 
-    Contract Section 4: final.oa > 0.75 (0.75 itself does NOT pass).
+    契约规定：final.oa > 0.75（若恰好等于 0.75 亦视为未达标）。
+
+    Args:
+        oa (float): 实际总体精度。
+        threshold (float, optional): 准入门槛。默认为 0.75。
+
+    Returns:
+        bool: True 表示达标通过，False 表示未达标。
     """
     return oa > threshold
 
 
 # ---------------------------------------------------------------------------
-# 2. Sieve Filtering (GDAL Sieve)
+# 2. 筛分后处理滤波（GDAL Sieve）
 # ---------------------------------------------------------------------------
 
 def sieve_classification(
@@ -116,10 +161,21 @@ def sieve_classification(
     connectivity: int = 8,
     nodata_val: int = 0,
 ) -> np.ndarray:
-    """Apply GDAL SieveFilter to remove speckles below threshold_pixels.
+    """使用 GDAL SieveFilter 滤除连通像元数小于 threshold_pixels 的孤立细碎杂斑。
 
-    Explicitly passes a binary mask where raw_arr != nodata_val.
-    Strictly preserves NoData boundaries.
+    处理要点：
+    - 在内存（MEM 驱动）中创建数据源与掩膜数据源；
+    - 显式构建并传入二值有效掩膜（raw_arr != nodata_val），严防算法将 NoData 背景与前景斑块合并；
+    - 执行后重新将原始 NoData 位置强制写回为 nodata_val，确保边界严格保持。
+
+    Args:
+        raw_arr (np.ndarray): 原始预测分类二维矩阵（uint8）。
+        threshold_pixels (int, optional): 筛分面积阈值（单位：像元数）。默认为 4。
+        connectivity (int, optional): 像素邻域连通度（4 或 8）。默认为 8。
+        nodata_val (int, optional): 无效背景编码。默认为 0。
+
+    Returns:
+        np.ndarray: 滤波平滑后的 uint8 分类结果矩阵。
     """
     height, width = raw_arr.shape
     drv = gdal.GetDriverByName("MEM")
@@ -127,13 +183,14 @@ def sieve_classification(
     ds_src = drv.Create("", width, height, 1, gdal.GDT_Byte)
     ds_src.GetRasterBand(1).WriteArray(raw_arr)
 
-    # Explicit binary valid mask (1 for valid pixels, 0 for NoData)
+    # 显式生成有效像元掩膜（有效像元为 1，NoData 背景为 0）
     valid_mask = (raw_arr != nodata_val).astype(np.uint8)
     ds_mask = drv.Create("", width, height, 1, gdal.GDT_Byte)
     ds_mask.GetRasterBand(1).WriteArray(valid_mask)
 
     ds_dst = drv.Create("", width, height, 1, gdal.GDT_Byte)
 
+    # 调用 GDAL 原生 SieveFilter 算法
     gdal.SieveFilter(
         ds_src.GetRasterBand(1),
         ds_mask.GetRasterBand(1),
@@ -144,14 +201,14 @@ def sieve_classification(
 
     filtered_arr = ds_dst.GetRasterBand(1).ReadAsArray()
 
-    # Guarantee NoData locations remain strictly nodata_val
+    # 严格保证原本为 NoData 的位置不受平滑影响
     filtered_arr[raw_arr == nodata_val] = nodata_val
 
     return filtered_arr.astype(np.uint8)
 
 
 # ---------------------------------------------------------------------------
-# 3. Vectorization and Study Area Clipping
+# 3. 栅格矢量化与法定边界裁剪（Vectorization and Study Area Clipping）
 # ---------------------------------------------------------------------------
 
 def vectorize_and_clip(
@@ -164,16 +221,38 @@ def vectorize_and_clip(
     output_shp: Path,
     nodata_val: int = 0,
 ) -> Path:
-    """Vectorize raster classification, clip to study area, and write ESRI Shapefile suite."""
+    """将分类栅格转化为多边形矢量图层，裁剪至法定研究区范围，并输出 ESRI Shapefile。
+
+    处理要点：
+    - 遍历提取有效像元连通域多边形；
+    - 与研究区几何边界执行空间交集（intersection），过滤边缘残留碎片；
+    - 计算图斑面积（平方公里）；
+    - 输出 Shapefile 格式并显式生成 UTF-8 编码的 .cpg 文件，杜绝中文属性乱码。
+
+    Args:
+        raster_arr (np.ndarray): 平滑后的分类栅格数组。
+        transform (Affine): 栅格仿射变换参数。
+        crs (str): 空间坐标系标识。
+        study_area_geom (Any): 研究区边界 Shapely 几何对象。
+        year (int): 成果归属年份。
+        class_names (dict[int, str]): 类别编码至类别中文名称的映射字典。
+        output_shp (Path): 输出 Shapefile 文件的绝对路径。
+        nodata_val (int, optional): 背景值。默认为 0。
+
+    Returns:
+        Path: 输出的 .shp 文件路径。
+    """
     mask = raster_arr != nodata_val
     records = []
 
+    # 提取所有非 NoData 图斑的几何与属性
     for geom_dict, val in shapes(raster_arr, mask=mask, transform=transform):
         class_id = int(val)
         if class_id == nodata_val:
             continue
 
         poly = shape(geom_dict)
+        # 与法定行政边界求交裁剪
         if study_area_geom is not None:
             poly = poly.intersection(study_area_geom)
             if poly.is_empty:
@@ -191,7 +270,6 @@ def vectorize_and_clip(
     output_shp.parent.mkdir(parents=True, exist_ok=True)
 
     if not records:
-        # Create empty GeoDataFrame with expected schema
         gdf = gpd.GeoDataFrame(
             columns=["class_id", "class_name", "year", "area_km2", "geometry"],
             crs=crs,
@@ -199,10 +277,10 @@ def vectorize_and_clip(
     else:
         gdf = gpd.GeoDataFrame(records, crs=crs)
 
-    # Save to Shapefile
+    # 保存为 ESRI Shapefile
     gdf.to_file(output_shp, driver="ESRI Shapefile", encoding="utf-8")
 
-    # Ensure .cpg file exists with UTF-8 encoding
+    # 写入 .cpg 编码描述文件，确保 GIS 软件识别 UTF-8
     cpg_path = output_shp.with_suffix(".cpg")
     cpg_path.write_text("UTF-8\n", encoding="utf-8")
 
@@ -210,7 +288,7 @@ def vectorize_and_clip(
 
 
 # ---------------------------------------------------------------------------
-# 4. Report and Table Exporters
+# 4. 统计表格与评价报告导出（Report and Table Exporters）
 # ---------------------------------------------------------------------------
 
 def export_confusion_matrix_csv(
@@ -218,7 +296,18 @@ def export_confusion_matrix_csv(
     matrix: list[list[int]],
     class_order: list[int] = [1, 2, 3, 4, 5],
 ) -> Path:
-    """Export confusion matrix CSV with true_class and pred_X headers."""
+    """将混淆矩阵导出为带有标准表头的 CSV 格式表格。
+
+    表头规范：true_class, pred_1, pred_2, pred_3, pred_4, pred_5
+
+    Args:
+        csv_path (Path): 导出文件路径。
+        matrix (list[list[int]]): 5x5 混淆矩阵数据。
+        class_order (list[int], optional): 类别排序。默认为 [1, 2, 3, 4, 5]。
+
+    Returns:
+        Path: 导出的 CSV 文件路径。
+    """
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     header = ["true_class"] + [f"pred_{c}" for c in class_order]
 
@@ -235,7 +324,15 @@ def export_metrics_csv(
     csv_path: Path,
     metrics: list[dict[str, Any]],
 ) -> Path:
-    """Export classification metrics CSV (precision, recall, f1, support)."""
+    """将各类别精度指标导出为 CSV 表格（含精确率、召回率、F1 和样本支持量）。
+
+    Args:
+        csv_path (Path): 导出路径。
+        metrics (list[dict[str, Any]]): 各类别指标字典列表。
+
+    Returns:
+        Path: 导出的 CSV 文件路径。
+    """
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = ["class_id", "precision", "recall", "f1", "support"]
 
@@ -248,7 +345,7 @@ def export_metrics_csv(
     return csv_path
 
 
-# Enable GDAL exceptions
+# 开启 GDAL 异常模式
 gdal.UseExceptions()
 
 
@@ -267,7 +364,25 @@ def generate_evaluation_report(
     oa_threshold: float = 0.75,
     f1_target: float = 0.75,
 ) -> None:
-    """Generate accuracy evaluation report in JSON and Markdown formats."""
+    """输出 JSON 与 Markdown 双格式的精度评定分析报告。
+
+    内容涵盖：原始/最终总体精度对比、硬性门槛判定结果、建设用地核心 F1 分数、完整混淆矩阵及各类查准查全指标。
+
+    Args:
+        json_path (Path): 输出 JSON 报告路径。
+        md_path (Path): 输出 Markdown 报告路径。
+        year (int): 评价年份。
+        oa_raw (float): 原始预测总体精度。
+        oa_final (float): 最终平滑后总体精度。
+        matrix_raw (list[list[int]]): 原始混淆矩阵。
+        matrix_final (list[list[int]]): 最终混淆矩阵。
+        metrics_raw (list[dict[str, Any]]): 原始类别指标。
+        metrics_final (list[dict[str, Any]]): 最终类别指标。
+        total_samples (int): 留出验证集样本总像元数。
+        total_groups (int): 留出验证集独立地块组数。
+        oa_threshold (float, optional): 总体精度准入门槛。默认为 0.75。
+        f1_target (float, optional): 建设用地目标 F1 阈值。默认为 0.75。
+    """
     json_path.parent.mkdir(parents=True, exist_ok=True)
     md_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -276,7 +391,7 @@ def generate_evaluation_report(
     built_up_f1 = next((m["f1"] for m in metrics_final if m["class_id"] == 1), 0.0)
     passed_f1 = built_up_f1 >= f1_target
 
-    # Contract Section 4: keep unrounded values in JSON, round in display/markdown
+    # JSON 文件中保留完整精度的浮点数值
     report_dict = {
         "year": year,
         "total_samples": total_samples,
@@ -337,13 +452,29 @@ def generate_evaluation_report(
 
 
 # ---------------------------------------------------------------------------
-# 5. Pipeline Entry Point: finalize_evaluate
+# 5. 流水线执行主入口：finalize_evaluate
 # ---------------------------------------------------------------------------
 
 def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
-    """Execute P1-D postprocessing, vectorization, and independent accuracy evaluation.
+    """执行阶段 P1-D 的后处理平滑、矢量化裁剪以及独立验证集精度评定全流程。
 
-    Returns EvaluationData.
+    执行步骤：
+    1. 读取原始预测分类栅格 lulc_{year}_raw_30m.tif；
+    2. 执行 GDAL Sieve 滤波平滑微小杂斑，输出最终分类栅格 lulc_{year}_final_30m.tif；
+    3. 矢量化并根据新都区法定边界求交裁剪，输出 lulc_{year}.shp；
+    4. 读取独立留出验证集 holdout.csv，核算原始与最终分类的混淆矩阵与精度指标；
+    5. 导出各类 CSV 统计表格与 JSON/Markdown 精度评定报告。
+
+    Args:
+        ctx (ProjectContext): 项目运行上下文。
+        year (int): 目标年份。
+
+    Returns:
+        EvaluationData: 包含成果栅格路径、矢量路径、评价报告路径及 OA 指标的数据契约对象。
+
+    Raises:
+        FileNotFoundError: 当必要的前置原始预测文件、留出集或边界矢量缺失时抛出。
+        ValueError: 当留出验证集为空时抛出。
     """
     raw_path = ctx.outputs / "rasters" / f"lulc_{year}_raw_30m.tif"
     if not raw_path.exists():
@@ -360,7 +491,7 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
             split_meta = json.load(f)
             total_groups = len(split_meta.get("holdout_groups", []))
 
-    # Read study area boundary for clipping
+    # 读取用于裁剪的研究区边界
     ref_year = ctx.config.get("boundary_reference_year", 2021)
     bnd_path = ctx.data / "processed" / "boundaries" / f"xindu_{ref_year}.gpkg"
     study_area_geom = None
@@ -370,19 +501,19 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
     else:
         raise FileNotFoundError(f"Study area boundary file not found: {bnd_path}")
 
-    # Read raw raster
+    # 读取原始预测栅格数据
     with rasterio.open(raw_path) as src:
         raw_arr = src.read(1)
         meta = src.meta.copy()
         crs_str = src.crs.to_string() if src.crs else "EPSG:32648"
         transform = src.transform
 
-    # Retrieve postprocessing parameters
+    # 读取后处理滤波配置
     post_cfg = ctx.config.get("postprocess", {})
     sieve_thresh = int(post_cfg.get("sieve_threshold_pixels", 4))
     connectivity = int(post_cfg.get("connectivity", 8))
 
-    # 1. GDAL Sieve post-processing
+    # 1. 执行 GDAL Sieve 杂斑滤波
     final_arr = sieve_classification(
         raw_arr=raw_arr,
         threshold_pixels=sieve_thresh,
@@ -390,7 +521,7 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
         nodata_val=0,
     )
 
-    # Save final classification raster
+    # 保存最终分类栅格
     final_dir = ctx.outputs / "rasters"
     final_dir.mkdir(parents=True, exist_ok=True)
     final_path = final_dir / f"lulc_{year}_final_30m.tif"
@@ -403,7 +534,7 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
     with rasterio.open(final_path, "w", **meta) as dst:
         dst.write(final_arr, 1)
 
-    # 2. Vectorize and clip to study area
+    # 2. 栅格转矢量并裁剪至研究区
     class_map = {item["code"]: item["name"] for item in ctx.config.get("classes", [])}
     vector_dir = ctx.outputs / "vectors" / str(year)
     shp_path = vector_dir / f"lulc_{year}.shp"
@@ -419,7 +550,7 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
         nodata_val=0,
     )
 
-    # 3. Read holdout samples and extract raw/final predictions
+    # 3. 读取独立留出验证集样本并抽取原始与平滑后的分类预测值
     holdout_samples: list[dict[str, Any]] = []
     with open(holdout_csv, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -449,7 +580,7 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
     metrics_raw = calculate_class_metrics(matrix_raw, class_order)
     metrics_final = calculate_class_metrics(matrix_final, class_order)
 
-    # 4. Export CSV tables
+    # 4. 导出 CSV 混淆矩阵与指标明细表
     tables_dir = ctx.outputs / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
 
@@ -458,7 +589,7 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
     export_metrics_csv(tables_dir / f"metrics_{year}_raw.csv", metrics_raw)
     export_metrics_csv(tables_dir / f"metrics_{year}_final.csv", metrics_final)
 
-    # 5. Export evaluation JSON and Markdown reports
+    # 5. 输出综合评定 JSON 与 Markdown 报告
     rep_dir = ctx.reports / "accuracy"
     rep_dir.mkdir(parents=True, exist_ok=True)
     json_path = rep_dir / f"evaluation_{year}.json"

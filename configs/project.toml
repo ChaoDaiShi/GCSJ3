@@ -83,3 +83,32 @@ color = "#377EB8"
 code = 5
 name = "裸地"
 color = "#B69C7D"
+
+[[change_classes]]
+code = 1
+name = "持续建设"
+color = "#D95F02"
+
+[[change_classes]]
+code = 2
+name = "新增建设"
+color = "#E41A1C"
+
+[[change_classes]]
+code = 3
+name = "减少建设"
+color = "#377EB8"
+
+[[change_classes]]
+code = 4
+name = "持续非建设"
+color = "#B3B3B3"
+
+[qgis]
+target_version = "3.44 LTR"
+project_filename = "xindu_1992_2021.qgz"
+dpi = 300
+page_format = "A4"
+page_orientation = "landscape"
+layouts = ["lulc_1992", "lulc_2021", "urban_change", "township_change"]
+

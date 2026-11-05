@@ -1,10 +1,34 @@
-"""Urban expansion and land-cover change analysis for rs-urban.
+"""城市扩张时空演变与街镇变化分析模块（P1-E）。
 
-Implements P1-E contract from Section 5 and Section 6 of docs/03-contracts.md:
-  - compute_change_raster: pixel-wise change classification and common-valid mask
-  - vectorize_change_raster: polygon extraction for valid change classes
-  - calculate_change_statistics: geometric intersection with study area and townships
-  - analyze_change: pipeline orchestrator returning ChangeData
+主要功能与科学处理流程：
+1. compute_change_raster:
+   - 构建 1992 年与 2021 年最终土地分类的“共同有效观测掩膜”（valid_common）：
+     只有当像元落入法定研究区内，且两期分类结果均为合法分类值（1..5）时才视为有效对比；
+     任一期存在云、阴影或无数据时均标记为无效像元（0），绝不虚假判定为建设用地的新增或减少；
+   - 提取 4 类建设用地动态变化编码：
+     * 1 = 持续建设（1 -> 1）
+     * 2 = 新增建设（非建设 [2..5] -> 1）
+     * 3 = 减少建设（1 -> 非建设 [2..5]）
+     * 4 = 持续非建设（非建设 [2..5] -> 非建设 [2..5]）
+     * 0 = NoData（研究区外或任一期无效）
+
+2. vectorize_change_raster:
+   - 将 4 类变化栅格矢量化为多边形矢量图层，关联标准中文分类名称。
+
+3. calculate_change_statistics:
+   - 与 2021 年街镇行政区划矢量图层执行空间几何叠加（Spatial Overlay Intersection）；
+   - 计算各行政单元的指标：
+     * total_area_km2: 行政单元法定边界总面积
+     * comparable_area_km2: 两期共同有效观测覆盖的实际可比面积
+     * valid_ratio: 空间数据有效覆盖度比率
+     * built_1992_km2 / built_2021_km2: 1992 及 2021 年的建设用地面积
+     * persistent_km2 / added_km2 / lost_km2 / net_km2: 持续、新增、减少与净增建设用地面积
+     * annual_net_km2: 年均净增扩张速率（净增量 / 历时年数 29 年）
+     * annual_intensity_pct: 年均扩张强度指数（(净增量 / (历时年数 * 辖区总面积)) * 100%）
+   - 面积平衡核验（Area Balance Check）：严格核查“各街镇可比面积之和 == 全区可比面积”与“各街镇净增量之和 == 全区净增量”，容差控制在 1e-6 平方公里内。
+
+4. analyze_change:
+   - 调度执行两期变化分析流水线，输出变化栅格、GPKG 图层、统计表格与 JSON 审计摘要。
 """
 
 from __future__ import annotations
@@ -23,7 +47,7 @@ from shapely.geometry import shape
 
 from rs_urban.contracts import ChangeData, ProjectContext
 
-# Standard 4-class change codes and names
+# 标准 4 类变化类别编码与其规范中文名称
 CHANGE_NAMES = {
     1: "持续建设",
     2: "新增建设",
@@ -31,7 +55,7 @@ CHANGE_NAMES = {
     4: "持续非建设",
 }
 
-# Colormap for change raster: 0=transparent, 1=persistent(orange), 2=added(red), 3=lost(blue), 4=persistent non-built(gray)
+# 变化栅格色彩映射表：0=透明背景, 1=持续建设(橙色), 2=新增建设(红色), 3=减少建设(蓝色), 4=持续非建设(灰色)
 CHANGE_COLORMAP = {
     0: (0, 0, 0, 0),
     1: (217, 95, 2, 255),
@@ -40,6 +64,7 @@ CHANGE_COLORMAP = {
     4: (179, 179, 179, 255),
 }
 
+# 输出统计 CSV 表格的标准字段顺序
 TABLE_FIELDNAMES = [
     "unit_id",
     "name",
@@ -64,44 +89,54 @@ def compute_change_raster(
     final_2021: np.ndarray,
     in_study_area: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Compute 4-class change raster and common-valid mask.
+    """计算两期土地分类的 4 分类时空转移栅格与共同有效像元掩膜。
 
-    Change grid codes:
-      0 = NoData (at least one year is NoData 0, or outside study area)
-      1 = Persistent built (1 -> 1)
-      2 = Added built (non-built [2..5] -> 1)
-      3 = Lost built (1 -> non-built [2..5])
-      4 = Persistent non-built (non-built [2..5] -> non-built [2..5])
+    变化栅格编码规范：
+      - 0 = NoData（任一期缺失/无效，或在研究区外部）
+      - 1 = 持续建设（1992年为建设用地，2021年仍为建设用地）
+      - 2 = 新增建设（1992年为非建设用地 [2..5]，2021年转为建设用地 1）
+      - 3 = 减少建设（1992年为建设用地 1，2021年转为非建设用地 [2..5]）
+      - 4 = 持续非建设（1992年为非建设用地，2021年仍为非建设用地）
 
-    Common-valid mask codes:
-      1   = Common valid (both years valid [1..5] within study area)
-      0   = Invalid in study area (missing/NoData in at least one year)
-      255 = Outside study area
+    共同有效观测掩膜（valid_common）编码规范：
+      - 1   = 共同有效（两期在研究区内均有明确的地类分类 1..5）
+      - 0   = 研究区内无效（任一期或两期均缺失或为 NoData）
+      - 255 = 研究区外部
+
+    Args:
+        final_1992 (np.ndarray): 1992 年最终分类矩阵（uint8）。
+        final_2021 (np.ndarray): 2021 年最终分类矩阵（uint8）。
+        in_study_area (np.ndarray): 标记像元是否位于研究区内部的布尔矩阵。
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]:
+            - change_grid: uint8 变化栅格矩阵（取值 0..4）；
+            - valid_common_grid: uint8 共同有效观测掩膜矩阵（取值 0, 1, 255）。
     """
     valid_1992 = (final_1992 >= 1) & (final_1992 <= 5)
     valid_2021 = (final_2021 >= 1) & (final_2021 <= 5)
     both_valid = valid_1992 & valid_2021 & in_study_area
 
-    # Change raster: default 0 (NoData)
+    # 变化栅格默认初始化为 0 (NoData)
     change_grid = np.zeros_like(final_1992, dtype=np.uint8)
 
-    # Persistent built (1 -> 1)
+    # 1: 持续建设 (1 -> 1)
     mask_persistent = both_valid & (final_1992 == 1) & (final_2021 == 1)
     change_grid[mask_persistent] = 1
 
-    # Added built ([2..5] -> 1)
+    # 2: 新增建设 ([2..5] -> 1)
     mask_added = both_valid & (final_1992 >= 2) & (final_2021 == 1)
     change_grid[mask_added] = 2
 
-    # Lost built (1 -> [2..5])
+    # 3: 减少建设 (1 -> [2..5])
     mask_lost = both_valid & (final_1992 == 1) & (final_2021 >= 2)
     change_grid[mask_lost] = 3
 
-    # Persistent non-built ([2..5] -> [2..5])
+    # 4: 持续非建设 ([2..5] -> [2..5])
     mask_nonbuilt = both_valid & (final_1992 >= 2) & (final_2021 >= 2)
     change_grid[mask_nonbuilt] = 4
 
-    # Valid common mask: 1=valid, 0=invalid in study area, 255=outside study area
+    # 构建共同有效掩膜栅格
     valid_common_grid = np.full_like(final_1992, 255, dtype=np.uint8)
     valid_common_grid[in_study_area & both_valid] = 1
     valid_common_grid[in_study_area & ~both_valid] = 0
@@ -114,7 +149,16 @@ def vectorize_change_raster(
     transform: rasterio.Affine,
     crs: str = "EPSG:32648",
 ) -> gpd.GeoDataFrame:
-    """Vectorize valid change pixels (1..4) into a GeoDataFrame."""
+    """将有效变化栅格（类别 1..4）转换为多边形矢量 GeoDataFrame。
+
+    Args:
+        change_grid (np.ndarray): 变化栅格数组。
+        transform (rasterio.Affine): 栅格仿射变换参数。
+        crs (str, optional): 目标空间参考坐标系。默认为 "EPSG:32648"。
+
+    Returns:
+        gpd.GeoDataFrame: 包含 change_id、change_name 和 geometry 字段的多边形矢量数据。
+    """
     mask = (change_grid >= 1) & (change_grid <= 4)
     if not np.any(mask):
         return gpd.GeoDataFrame(columns=["change_id", "change_name", "geometry"], crs=crs)
@@ -143,10 +187,39 @@ def calculate_change_statistics(
     elapsed_years: int = 29,
     boundary_year: int = 2021,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-    """Compute township-level and district-level urban expansion metrics via geometric overlay."""
+    """通过空间几何叠加分析（Spatial Overlay）计算全区及各街镇的城市扩张指标，并执行严密的面积平衡核验。
+
+    计算指标包括：
+    - total_area_km2: 行政边界多边形几何面积；
+    - comparable_area_km2: 共同有效观测的实际比对覆盖面积；
+    - valid_ratio: 有效比率（可比面积 / 辖区总面积）；
+    - built_1992_km2 = 持续建设面积 + 减少建设面积；
+    - built_2021_km2 = 持续建设面积 + 新增建设面积；
+    - net_km2 = 新增建设面积 - 减少建设面积；
+    - annual_net_km2 = net_km2 / elapsed_years；
+    - annual_intensity_pct = (net_km2 / (elapsed_years * total_area_km2)) * 100%。
+
+    面积平衡性检验逻辑：
+    - sum(街镇可比面积) 与 全区可比面积 之差 ≤ 容差；
+    - sum(街镇净增面积) 与 全区净增面积 之差 ≤ 容差；
+    - 容差取 max(1e-6, 全区面积 * 1e-6)。
+
+    Args:
+        gdf_change (gpd.GeoDataFrame): 变化图斑矢量。
+        gdf_study_area (gpd.GeoDataFrame): 全区法定边界矢量。
+        gdf_townships (gpd.GeoDataFrame): 街镇行政区划矢量。
+        elapsed_years (int, optional): 历时年数。默认为 29（1992 至 2021）。
+        boundary_year (int, optional): 行政边界基准年份。默认为 2021。
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+            - townships_df: 各街镇扩张变化统计表；
+            - district_df: 全区综合扩张变化统计表；
+            - stats_summary: 包含完整面积核对证据的审计摘要字典。
+    """
     crs = gdf_study_area.crs
 
-    # Clip change polygons strictly to the study area boundary
+    # 将变化图斑严格裁剪至全区研究区边界内部
     study_area_geom = (
         gdf_study_area.geometry.union_all()
         if hasattr(gdf_study_area.geometry, "union_all")
@@ -157,7 +230,7 @@ def calculate_change_statistics(
     else:
         gdf_change_clipped = gpd.GeoDataFrame(columns=["change_id", "change_name", "geometry"], crs=crs)
 
-    # 1. District statistics
+    # 1. 统计全区指标（District statistics）
     district_total_area_km2 = study_area_geom.area / 1e6
 
     area_id = str(gdf_study_area["area_id"].iloc[0]) if "area_id" in gdf_study_area.columns else "510114"
@@ -205,10 +278,11 @@ def calculate_change_statistics(
     }
     district_df = pd.DataFrame([district_row], columns=TABLE_FIELDNAMES)
 
-    # 2. Township statistics via spatial overlay
+    # 2. 空间几何叠加统计街镇指标（Township statistics via spatial overlay）
     township_rows: list[dict[str, Any]] = []
 
     if not gdf_change_clipped.empty and not gdf_townships.empty:
+        # 执行相交叠加操作
         inter = gpd.overlay(gdf_change_clipped, gdf_townships, how="intersection")
         inter["area_km2"] = inter.geometry.area / 1e6
     else:
@@ -234,7 +308,7 @@ def calculate_change_statistics(
             t_l_km2 = 0.0
 
         if t_comp_km2 == 0.0:
-            # When comparable area is 0, leave change metrics empty per contract
+            # 当该街镇无有效可比面积时，依据契约将变化指标置空
             row_dict = {
                 "unit_id": u_id,
                 "name": u_name,
@@ -286,7 +360,7 @@ def calculate_change_statistics(
 
     townships_df = pd.DataFrame(township_rows, columns=TABLE_FIELDNAMES)
 
-    # 3. Area Balance Verification
+    # 3. 严格执行面积平衡性核查（Area Balance Verification）
     t_comp_sum = sum(r["comparable_area_km2"] for r in township_rows)
     t_p_sum = sum(r["persistent_km2"] for r in township_rows if r["persistent_km2"] != "")
     t_a_sum = sum(r["added_km2"] for r in township_rows if r["added_km2"] != "")
@@ -298,6 +372,7 @@ def calculate_change_statistics(
     discrepancy_net_km2 = abs(t_net_sum - dist_net_km2)
     is_balanced = (discrepancy_comp_km2 <= tolerance_km2) and (discrepancy_net_km2 <= tolerance_km2)
 
+    # 汇总平衡检验数据结构
     stats_summary = {
         "schema_version": 1,
         "boundary_year": boundary_year,
@@ -329,8 +404,28 @@ def calculate_change_statistics(
 
 
 def analyze_change(ctx: ProjectContext) -> ChangeData:
-    """Execute P1-E change analysis between 1992 and 2021 final LULC classifications."""
-    # Standard input paths
+    """执行阶段 P1-E 城市扩张分析的主入口函数。
+
+    处理步骤：
+    1. 读取 1992 与 2021 年最终土地利用分类栅格及法定边界矢量；
+    2. 计算 4 类变化栅格与共同有效掩膜；
+    3. 输出 valid_common_30m.tif 掩膜；
+    4. 导出带有专属标准色表的 change_1992_2021_30m.tif 栅格；
+    5. 矢量化变化区域并导出为 GeoPackage（urban_change.gpkg）；
+    6. 计算全区及各街镇的年均净增速率与年均扩张强度；
+    7. 输出 township_change_1992_2021.csv、district_change_1992_2021.csv 与 statistics.json。
+
+    Args:
+        ctx (ProjectContext): 项目运行上下文。
+
+    Returns:
+        ChangeData: 包含变化栅格、矢量及统计表格路径的数据契约对象。
+
+    Raises:
+        FileNotFoundError: 当必要输入文件缺失时抛出。
+        ValueError: 当两期分类栅格的空间规格不一致时抛出。
+    """
+    # 标准输入路径
     final_1992_path = ctx.outputs / "rasters" / "lulc_1992_final_30m.tif"
     final_2021_path = ctx.outputs / "rasters" / "lulc_2021_final_30m.tif"
     boundaries_path = ctx.data / "processed" / "boundaries" / "xindu_2021.gpkg"
@@ -343,7 +438,7 @@ def analyze_change(ctx: ProjectContext) -> ChangeData:
     if not boundaries_path.exists():
         raise FileNotFoundError(f"Administrative boundaries GPKG not found: {boundaries_path}")
 
-    # Standard output paths
+    # 标准输出路径
     valid_common_path = ctx.data / "processed" / "common" / "valid_common_30m.tif"
     change_raster_path = ctx.outputs / "rasters" / "change_1992_2021_30m.tif"
     vectors_path = ctx.outputs / "vectors" / "change" / "urban_change.gpkg"
@@ -351,7 +446,7 @@ def analyze_change(ctx: ProjectContext) -> ChangeData:
     district_csv_path = ctx.outputs / "tables" / "district_change_1992_2021.csv"
     statistics_json_path = ctx.reports / "analysis" / "statistics.json"
 
-    # 1. Read input rasters
+    # 1. 读取并校验两期输入栅格规格一致性
     with rasterio.open(final_1992_path) as src_1992, rasterio.open(final_2021_path) as src_2021:
         if (src_1992.width, src_1992.height) != (src_2021.width, src_2021.height):
             raise ValueError(
@@ -366,10 +461,11 @@ def analyze_change(ctx: ProjectContext) -> ChangeData:
         f2021 = src_2021.read(1)
         meta = src_1992.meta.copy()
 
-    # Read boundaries
+    # 读取行政边界图层
     gdf_study_area = gpd.read_file(boundaries_path, layer="study_area")
     gdf_townships = gpd.read_file(boundaries_path, layer="townships")
 
+    # 获取全区掩膜数组
     if aoi_path.exists():
         with rasterio.open(aoi_path) as aoi_src:
             in_study_area = (aoi_src.read(1) == 1)
@@ -383,21 +479,21 @@ def analyze_change(ctx: ProjectContext) -> ChangeData:
             all_touched=True,
         ) == 1
 
-    # 2. Compute change raster and common-valid mask
+    # 2. 计算 4 类变化栅格与共同有效掩膜
     change_grid, valid_common_grid = compute_change_raster(
         final_1992=f1992,
         final_2021=f2021,
         in_study_area=in_study_area,
     )
 
-    # 3. Write valid_common_30m.tif
+    # 3. 输出共同有效掩膜栅格 valid_common_30m.tif
     valid_common_path.parent.mkdir(parents=True, exist_ok=True)
     meta_common = meta.copy()
     meta_common.update(dtype=rasterio.uint8, nodata=255, count=1)
     with rasterio.open(valid_common_path, "w", **meta_common) as dst_common:
         dst_common.write(valid_common_grid, 1)
 
-    # 4. Write change_1992_2021_30m.tif
+    # 4. 输出变化分析栅格 change_1992_2021_30m.tif 并附加色彩映射表
     change_raster_path.parent.mkdir(parents=True, exist_ok=True)
     meta_change = meta.copy()
     meta_change.update(dtype=rasterio.uint8, nodata=0, count=1)
@@ -405,14 +501,14 @@ def analyze_change(ctx: ProjectContext) -> ChangeData:
         dst_change.write(change_grid, 1)
         dst_change.write_colormap(1, CHANGE_COLORMAP)
 
-    # 5. Vectorize change raster
+    # 5. 变化栅格矢量化为 GeoPackage 图层
     gdf_change = vectorize_change_raster(
         change_grid=change_grid,
         transform=meta["transform"],
         crs=str(meta["crs"]),
     )
 
-    # Save urban_change.gpkg (layer: change)
+    # 保存至 urban_change.gpkg (图层名: change)
     vectors_path.parent.mkdir(parents=True, exist_ok=True)
     study_area_geom = (
         gdf_study_area.geometry.union_all()
@@ -428,7 +524,7 @@ def analyze_change(ctx: ProjectContext) -> ChangeData:
 
     gdf_urban_change.to_file(vectors_path, layer="change", driver="GPKG")
 
-    # 6. Calculate statistics
+    # 6. 计算街镇与全区指标统计
     elapsed_years = int(ctx.config.get("analysis", {}).get("elapsed_years", 29))
     boundary_year = int(ctx.config.get("boundary_reference_year", 2021))
 
@@ -440,14 +536,14 @@ def analyze_change(ctx: ProjectContext) -> ChangeData:
         boundary_year=boundary_year,
     )
 
-    # 7. Write tables
+    # 7. 导出 CSV 统计表格
     townships_csv_path.parent.mkdir(parents=True, exist_ok=True)
     townships_df.to_csv(townships_csv_path, index=False, encoding="utf-8")
 
     district_csv_path.parent.mkdir(parents=True, exist_ok=True)
     district_df.to_csv(district_csv_path, index=False, encoding="utf-8")
 
-    # 8. Write statistics report JSON
+    # 8. 输出统计审计 JSON 文件
     statistics_json_path.parent.mkdir(parents=True, exist_ok=True)
     with open(statistics_json_path, "w", encoding="utf-8") as f:
         json.dump(stats_summary, f, indent=2, ensure_ascii=False)
