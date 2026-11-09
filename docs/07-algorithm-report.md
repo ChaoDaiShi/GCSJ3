@@ -61,30 +61,30 @@ flowchart TD
 
 | 阶段 / 功能 | 对应函数 | 文件路径与行号区间 | 核心算法与科学职责 |
 | :--- | :--- | :--- | :--- |
-| **P1: 网格向外对齐** | `compute_grid_specs` | [preprocess.py:L60-L107](file:///F:/工程实践3/src/rs_urban/preprocess.py#L60-L107) | 统一 30m 网格，坐标向下/向上整除向外对齐 |
-| **P1: 去云去阴影掩膜** | `mask_qa_pixel` | [preprocess.py:L220-L250](file:///F:/工程实践3/src/rs_urban/preprocess.py#L220-L250) | 逐位位运算过滤云、阴影、积雪，保留水体 |
-| **P1: 辐射定标与防负值**| `mask_and_scale_surface_reflectance` | [preprocess.py:L274-L318](file:///F:/工程实践3/src/rs_urban/preprocess.py#L274-L318) | 线性转换地表反射率，保护 Fill(0) 免于算成 -0.2 |
-| **P2: 4 大指数计算** | `calculate_indices` | [samples.py:L59-L145](file:///F:/工程实践3/src/rs_urban/samples.py#L59-L145) | 计算 NDVI/NDBI/MNDWI/BSI，防除零置 NoData |
-| **P2: 防作弊样本隔离** | `split_sample_groups` | [samples.py:L210-L294](file:///F:/工程实践3/src/rs_urban/samples.py#L210-L294) | `GroupShuffleSplit` 按地块组划分，杜绝自相关泄漏 |
-| **P3: 随机森林训练** | `train_classifier` | [classify.py:L94-L242](file:///F:/工程实践3/src/rs_urban/classify.py#L94-L242) | 300 棵决策树、均衡子抽样权重、特征随机子集 |
-| **P3: 滑动窗口大图推断**| `predict_raster_windowed` | [classify.py:L245-L355](file:///F:/工程实践3/src/rs_urban/classify.py#L245-L355) | 512×512 分块迭代推断，内存严格受控在数百 MB |
-| **P4: Sieve 滤波平滑** | `sieve_classification` | [evaluate.py:L158-L207](file:///F:/工程实践3/src/rs_urban/evaluate.py#L158-L207) | GDAL Sieve 8-邻接消除 $<4$ 像元椒盐孤立杂斑 |
-| **P4: 混淆矩阵与 OA 评价**| `calculate_confusion_matrix` | [evaluate.py:L58-L95](file:///F:/工程实践3/src/rs_urban/evaluate.py#L58-L95) | 闭卷考卷 5×5 矩阵、未舍入 OA 必须严格 $>0.75$ |
-| **P5: 4 类动态变化栅格**| `compute_change_raster` | [analyze.py:L87-L144](file:///F:/工程实践3/src/rs_urban/analyze.py#L87-L144) | 双期共同有效像元判定，4 类建设演化状态转移 |
-| **P5: 街镇几何相交与守恒**| `calculate_change_statistics` | [analyze.py:L183-L403](file:///F:/工程实践3/src/rs_urban/analyze.py#L183-L403) | 矢量相交切分街镇边界，核查街镇总和与区级守恒 |
+| **P1: 网格向外对齐** | `compute_grid_specs` | [preprocess.py:L60-L107](file:///E:/工程实践3/src/rs_urban/preprocess.py#L60-L107) | 统一 30m 网格，坐标向下/向上整除向外对齐 |
+| **P1: 去云去阴影掩膜** | `mask_qa_pixel` | [preprocess.py:L220-L250](file:///E:/工程实践3/src/rs_urban/preprocess.py#L220-L250) | 逐位位运算过滤云、阴影、积雪，保留水体 |
+| **P1: 辐射定标与防负值**| `mask_and_scale_surface_reflectance` | [preprocess.py:L274-L318](file:///E:/工程实践3/src/rs_urban/preprocess.py#L274-L318) | 线性转换地表反射率，保护 Fill(0) 免于算成 -0.2 |
+| **P2: 4 大指数计算** | `calculate_indices` | [samples.py:L59-L145](file:///E:/工程实践3/src/rs_urban/samples.py#L59-L145) | 计算 NDVI/NDBI/MNDWI/BSI，防除零置 NoData |
+| **P2: 防作弊样本隔离** | `split_sample_groups` | [samples.py:L210-L294](file:///E:/工程实践3/src/rs_urban/samples.py#L210-L294) | `GroupShuffleSplit` 按地块组划分，杜绝自相关泄漏 |
+| **P3: 随机森林训练** | `train_classifier` | [classify.py:L94-L242](file:///E:/工程实践3/src/rs_urban/classify.py#L94-L242) | 300 棵决策树、均衡子抽样权重、特征随机子集 |
+| **P3: 滑动窗口大图推断**| `predict_raster_windowed` | [classify.py:L245-L355](file:///E:/工程实践3/src/rs_urban/classify.py#L245-L355) | 512×512 分块迭代推断，内存严格受控在数百 MB |
+| **P4: Sieve 滤波平滑** | `sieve_classification` | [evaluate.py:L158-L207](file:///E:/工程实践3/src/rs_urban/evaluate.py#L158-L207) | GDAL Sieve 8-邻接消除 $<4$ 像元椒盐孤立杂斑 |
+| **P4: 混淆矩阵与 OA 评价**| `calculate_confusion_matrix` | [evaluate.py:L58-L95](file:///E:/工程实践3/src/rs_urban/evaluate.py#L58-L95) | 闭卷考卷 5×5 矩阵、未舍入 OA 必须严格 $>0.75$ |
+| **P5: 4 类动态变化栅格**| `compute_change_raster` | [analyze.py:L87-L144](file:///E:/工程实践3/src/rs_urban/analyze.py#L87-L144) | 双期共同有效像元判定，4 类建设演化状态转移 |
+| **P5: 街镇几何相交与守恒**| `calculate_change_statistics` | [analyze.py:L183-L403](file:///E:/工程实践3/src/rs_urban/analyze.py#L183-L403) | 矢量相交切分街镇边界，核查街镇总和与区级守恒 |
 
 ---
 
 ## 一、 第一阶段：影像预处理与空间网格对齐 (Preprocessing)
 
-> **对应入口脚本**：[src/01_preprocess.py](file:///F:/工程实践3/src/01_preprocess.py)  
-> **核心实现库**：[src/rs_urban/preprocess.py](file:///F:/工程实践3/src/rs_urban/preprocess.py)
+> **对应入口脚本**：[src/01_preprocess.py](file:///E:/工程实践3/src/01_preprocess.py)  
+> **核心实现库**：[src/rs_urban/preprocess.py](file:///E:/工程实践3/src/rs_urban/preprocess.py)
 
 ---
 
 ### 1. 算法：空间网格向外对齐算法 (Snap Outward)
 * **大白话原理**：两张跨越 29 年的照片要想逐像素对比，网格必须像乐高积木一样，格子的长宽、原点、边界严格重合。如果歪了半个像素，就会把隔壁的田误判成马路。
-* **代码位置**：[src/rs_urban/preprocess.py:L60-L107](file:///F:/工程实践3/src/rs_urban/preprocess.py#L60-L107)
+* **代码位置**：[src/rs_urban/preprocess.py:L60-L107](file:///E:/工程实践3/src/rs_urban/preprocess.py#L60-L107)
 
 ```python
 # 摘自 src/rs_urban/preprocess.py
@@ -130,7 +130,7 @@ def compute_grid_specs(
 
 ### 2. 算法：去云去阴影掩膜 (QA Bitmask 过滤)
 * **大白话原理**：卫星拍的照片附带了一张二进制“体检单”，记录每个像素是不是云朵、是不是阴影。通过二进制“按位与”运算，可以瞬间剔除白云遮挡，但**严格放行水体**。
-* **代码位置**：[src/rs_urban/preprocess.py:L220-L250](file:///F:/工程实践3/src/rs_urban/preprocess.py#L220-L250)
+* **代码位置**：[src/rs_urban/preprocess.py:L220-L250](file:///E:/工程实践3/src/rs_urban/preprocess.py#L220-L250)
 
 ```python
 # 摘自 src/rs_urban/preprocess.py
@@ -151,7 +151,7 @@ def mask_qa_pixel(qa: np.ndarray, sensor: str) -> np.ndarray:
 
 ### 3. 算法：物理辐射定标与 Fill 像元防负值陷阱
 * **大白话原理**：把原始相机数字电压信号（DN）乘以物理系数减去偏置，还原为真实地表反射率。但如果画面边缘无信号（DN=0），粗暴代入公式会变成 $-0.2$。算法专门加了一层防护网，保护无效区不被算成负数。
-* **代码位置**：[src/rs_urban/preprocess.py:L274-L318](file:///F:/工程实践3/src/rs_urban/preprocess.py#L274-L318)
+* **代码位置**：[src/rs_urban/preprocess.py:L274-L318](file:///E:/工程实践3/src/rs_urban/preprocess.py#L274-L318)
 
 ```python
 # 摘自 src/rs_urban/preprocess.py
@@ -180,14 +180,14 @@ def mask_and_scale_surface_reflectance(
 
 ## 二、 第二阶段：特征工程与空间组级样本隔离 (Features & Sampling)
 
-> **对应入口脚本**：[src/02_samples.py](file:///F:/工程实践3/src/02_samples.py)  
-> **核心实现库**：[src/rs_urban/samples.py](file:///F:/工程实践3/src/rs_urban/samples.py)
+> **对应入口脚本**：[src/02_samples.py](file:///E:/工程实践3/src/02_samples.py)  
+> **核心实现库**：[src/rs_urban/samples.py](file:///E:/工程实践3/src/rs_urban/samples.py)
 
 ---
 
 ### 1. 算法：4 大光谱特征指数计算与防除零全波段保护
 * **大白话原理**：给计算机配上能看穿植物叶绿素（NDVI）、建筑物水泥（NDBI）、河流湖泊（MNDWI）和裸露沙石（BSI）的特异功能透视镜。如果某像素除以零，绝不偷懒填 0，而是将这 10 个特征整组判定为无效。
-* **代码位置**：[src/rs_urban/samples.py:L59-L145](file:///F:/工程实践3/src/rs_urban/samples.py#L59-L145)
+* **代码位置**：[src/rs_urban/samples.py:L59-L145](file:///E:/工程实践3/src/rs_urban/samples.py#L59-L145)
 
 ```python
 # 摘自 src/rs_urban/samples.py
@@ -226,7 +226,7 @@ def calculate_indices(
 
 ### 2. 算法：防作弊空间组级样本留出划分 (GroupShuffleSplit)
 * **大白话原理**：同一块麦田里的相邻像元彼此极为相似（空间自相关性）。如果随机挑像元来测试，就等于提前把考试题目泄露给了模型。我们采用“按地块组整块切分”——同一个地块组的所有像元，要么全用于训练，要么全部锁入留出考卷（Holdout），严禁跨界！
-* **代码位置**：[src/rs_urban/samples.py:L210-L294](file:///F:/工程实践3/src/rs_urban/samples.py#L210-L294)
+* **代码位置**：[src/rs_urban/samples.py:L210-L294](file:///E:/工程实践3/src/rs_urban/samples.py#L210-L294)
 
 ```python
 # 摘自 src/rs_urban/samples.py
@@ -263,14 +263,14 @@ def split_sample_groups(
 
 ## 三、 第三阶段：分类大脑——随机森林算法 (Random Forest)
 
-> **对应入口脚本**：[src/03_classify.py](file:///F:/工程实践3/src/03_classify.py)  
-> **核心实现库**：[src/rs_urban/classify.py](file:///F:/工程实践3/src/rs_urban/classify.py)
+> **对应入口脚本**：[src/03_classify.py](file:///E:/工程实践3/src/03_classify.py)  
+> **核心实现库**：[src/rs_urban/classify.py](file:///E:/工程实践3/src/rs_urban/classify.py)
 
 ---
 
 ### 1. 算法：随机森林模型训练与类别平衡权重
 * **大白话原理**：组织 300 棵决策树（300 位专家），通过随机抽样和特征随机子集，让每位专家各有所长。同时针对稀少地类（如水域、裸地）加重考核惩罚（`balanced_subsample`），让大家投票决胜。
-* **代码位置**：[src/rs_urban/classify.py:L147-L185](file:///F:/工程实践3/src/rs_urban/classify.py#L147-L185)
+* **代码位置**：[src/rs_urban/classify.py:L147-L185](file:///E:/工程实践3/src/rs_urban/classify.py#L147-L185)
 
 ```python
 # 摘自 src/rs_urban/classify.py
@@ -296,7 +296,7 @@ def train_classifier(train_csv_path: Path, split_json_path: Path, config: dict[s
 
 ### 2. 算法：滑动窗口整景流式推断 (Windowed Inference)
 * **大白话原理**：整张新都区卫星图有数千万个像素，如果一口气全塞进电脑内存，几秒钟内就会报“MemoryError（内存爆炸）”。算法像吃切片面包一样，每次只读入 512×512 像素的小窗口在后台预测，再流水线式写回硬盘。
-* **代码位置**：[src/rs_urban/classify.py:L331-L355](file:///F:/工程实践3/src/rs_urban/classify.py#L331-L355)
+* **代码位置**：[src/rs_urban/classify.py:L331-L355](file:///E:/工程实践3/src/rs_urban/classify.py#L331-L355)
 
 ```python
 # 摘自 src/rs_urban/classify.py
@@ -323,14 +323,14 @@ with rasterio.open(output_raw_path, "w", **profile) as out_dst:
 
 ## 四、 第四阶段：后处理去噪与独立精度大考 (Post-processing & Evaluation)
 
-> **对应入口脚本**：[src/04_evaluate.py](file:///F:/工程实践3/src/04_evaluate.py)  
-> **核心实现库**：[src/rs_urban/evaluate.py](file:///F:/工程实践3/src/rs_urban/evaluate.py)
+> **对应入口脚本**：[src/04_evaluate.py](file:///E:/工程实践3/src/04_evaluate.py)  
+> **核心实现库**：[src/rs_urban/evaluate.py](file:///E:/工程实践3/src/rs_urban/evaluate.py)
 
 ---
 
 ### 1. 算法：GDAL Sieve 8-邻接连通滤波 (消除椒盐孤立杂斑)
 * **大白话原理**：电脑按像素分类容易出现孤立的“麻子脸”（例如麦田中央误判了 1 个水泥像素）。Sieve 算法寻找连通面积小于 4 个像素（$3600\text{ m}^2$）的微小碎斑，自动让周边的主要地类将其“吞并吸收”，使地图平整美观。
-* **代码位置**：[src/rs_urban/evaluate.py:L158-L207](file:///F:/工程实践3/src/rs_urban/evaluate.py#L158-L207)
+* **代码位置**：[src/rs_urban/evaluate.py:L158-L207](file:///E:/工程实践3/src/rs_urban/evaluate.py#L158-L207)
 
 ```python
 # 摘自 src/rs_urban/evaluate.py
@@ -368,7 +368,7 @@ def sieve_classification(
 
 ### 2. 算法：闭卷考卷 5×5 混淆矩阵与 OA 总体精度
 * **大白话原理**：从之前锁进保险箱的留出集（`holdout.csv`）拿考题，统计计算机猜对和猜错的分布。对角线代表猜对，非对角线代表看走眼。总体精度 $OA$ 必须**严格大于 0.75** 才能通关！
-* **代码位置**：[src/rs_urban/evaluate.py:L58-L95](file:///F:/工程实践3/src/rs_urban/evaluate.py#L58-L95) 与 [L98-L136](file:///F:/工程实践3/src/rs_urban/evaluate.py#L98-L136)
+* **代码位置**：[src/rs_urban/evaluate.py:L58-L95](file:///E:/工程实践3/src/rs_urban/evaluate.py#L58-L95) 与 [L98-L136](file:///E:/工程实践3/src/rs_urban/evaluate.py#L98-L136)
 
 ```python
 # 摘自 src/rs_urban/evaluate.py
@@ -394,14 +394,14 @@ def calculate_confusion_matrix(y_true, y_pred, class_order=[1, 2, 3, 4, 5]):
 
 ## 五、 第五阶段：29年时空变迁与街镇扩张定量分析 (Change & Expansion)
 
-> **对应入口脚本**：[src/05_analyze.py](file:///F:/工程实践3/src/05_analyze.py)  
-> **核心实现库**：[src/rs_urban/analyze.py](file:///F:/工程实践3/src/rs_urban/analyze.py)
+> **对应入口脚本**：[src/05_analyze.py](file:///E:/工程实践3/src/05_analyze.py)  
+> **核心实现库**：[src/rs_urban/analyze.py](file:///E:/工程实践3/src/rs_urban/analyze.py)
 
 ---
 
 ### 1. 算法：双期共同有效观测与 4 类动态变化栅格
 * **大白话原理**：如果 1992 年某处有云彩遮挡，2021 年看清是一栋楼，能算“新增建筑”吗？绝对不行！算法构建“双期共同有效掩膜”，只有两期都看清楚的地块才做对比，绝不无中生有。
-* **代码位置**：[src/rs_urban/analyze.py:L87-L144](file:///F:/工程实践3/src/rs_urban/analyze.py#L87-L144)
+* **代码位置**：[src/rs_urban/analyze.py:L87-L144](file:///E:/工程实践3/src/rs_urban/analyze.py#L87-L144)
 
 ```python
 # 摘自 src/rs_urban/analyze.py
@@ -429,7 +429,7 @@ def compute_change_raster(final_1992, final_2021, in_study_area):
 
 ### 2. 算法：街镇矢量几何求交与绝对面积守恒核查
 * **大白话原理**：像元是正方形，街镇分界线是曲折的折线。如果像元骑在边界线上，算法用高精度矢量求交将其切成两半，分别记账；最后核查 9 个街镇各指标总和是否与新都全区指标完全相等（容差小于 $10^{-6}\text{ km}^2$）。
-* **代码位置**：[src/rs_urban/analyze.py:L363-L395](file:///F:/工程实践3/src/rs_urban/analyze.py#L363-L395)
+* **代码位置**：[src/rs_urban/analyze.py:L363-L395](file:///E:/工程实践3/src/rs_urban/analyze.py#L363-L395)
 
 ```python
 # 摘自 src/rs_urban/analyze.py
@@ -461,4 +461,4 @@ is_balanced = (discrepancy_comp_km2 <= tolerance_km2) and (discrepancy_net_km2 <
 | **变化分析** | 矩阵差分 + 共同有效掩膜 + 矢量相交切分 | 城市扩张定量计算、边界跨界划分 | **“29 年时光差分对比，跨界像元切分记账，面积一分不漏绝对守恒。”** |
 
 ---
-*全套代码受严格自动化测试套件保护（116 项测试 100% PASS），契约规范详见 [03-contracts.md](file:///F:/工程实践3/docs/03-contracts.md)。*
+*全套代码受严格自动化测试套件保护（116 项测试 100% PASS），契约规范详见 [03-contracts.md](file:///E:/工程实践3/docs/03-contracts.md)。*

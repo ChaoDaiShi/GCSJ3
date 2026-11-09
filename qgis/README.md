@@ -81,7 +81,7 @@ import sys
 from pathlib import Path
 
 # 获取项目根目录
-project_root = Path(r"F:\工程实践3")
+project_root = Path(r"E:\工程实践3")
 sys.path.insert(0, str(project_root / "qgis" / "scripts"))
 
 from build_project import build_project

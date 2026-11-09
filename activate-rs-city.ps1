@@ -4,11 +4,18 @@
 #   . .\activate-rs-city.ps1
 #   python src/01_preprocess.py --config configs/project.toml --env-file .env --step boundaries
 #
+# 环境前缀默认 F:\rs-tools\envs\rs-city。换机器或换位置时先设置变量再执行：
+#   $env:RS_CITY_PREFIX = 'D:\conda\envs\rs-city'
+#   . .\activate-rs-city.ps1
+# 脚本优先采用 RS_CITY_PREFIX，未设置时回落到默认路径。
+#
 # 说明：本机未安装 conda/micromamba 的命令行激活钩子，因此这里直接设置
 # CONDA_PREFIX 派生的 PATH、PROJ_DATA、GDAL_DATA。缺少 PROJ_DATA 时
 # pyproj 会报 "unable to set PROJ database path"，坐标转换与 CRS 判断可能失败。
 
-$env:CONDA_PREFIX = 'F:\rs-tools\envs\rs-city'
+$rsCityPrefix = if ($env:RS_CITY_PREFIX) { $env:RS_CITY_PREFIX } else { 'F:\rs-tools\envs\rs-city' }
+
+$env:CONDA_PREFIX = $rsCityPrefix
 $env:CONDA_DEFAULT_ENV = 'rs-city'
 $env:PATH = @(
     $env:CONDA_PREFIX

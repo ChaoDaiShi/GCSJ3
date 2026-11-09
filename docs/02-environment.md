@@ -4,10 +4,10 @@
 
 | 文件 | 存什么 | Git | 当前状态 |
 | --- | --- | --- | --- |
-| `F:\工程实践3\.env` | 本机目录、GDAL 缓存大小 | 忽略 | 已由模板生成 |
-| `F:\工程实践3\.env.example` | 可共享的变量名与默认值 | 保留 | 已创建 |
-| `F:\工程实践3\configs\project.toml` | 投影、波段、类别、采样、模型、指标参数 | 保留 | 已创建，尚无程序读取 |
-| `F:\工程实践3\environment.yml` | Python/GIS 包依赖 | 保留 | 已声明，未安装或求解验证 |
+| `E:\工程实践3\.env` | 本机目录、GDAL 缓存大小 | 忽略 | 已由模板生成 |
+| `E:\工程实践3\.env.example` | 可共享的变量名与默认值 | 保留 | 已创建 |
+| `E:\工程实践3\configs\project.toml` | 投影、波段、类别、采样、模型、指标参数 | 保留 | 已创建，尚无程序读取 |
+| `E:\工程实践3\environment.yml` | Python/GIS 包依赖 | 保留 | 已声明，未安装或求解验证 |
 
 算法参数不塞进 `.env`；机器路径不写死在源码中。第一阶段离线运行，不需要地图 API Key、数据库连接、AI Key 或 Web 服务密钥。EarthExplorer 账号在下载网站使用，无需放入项目。
 
@@ -48,7 +48,7 @@ Python 固定 3.11。GIS 依赖统一来自 conda-forge，同一个环境内安�
 在能够调用 conda 的 PowerShell 中执行以下命令；若普通终端尚未加载 conda，使用安装器提供的 Miniforge PowerShell 入口：
 
 ```powershell
-Set-Location -LiteralPath 'F:\工程实践3'
+Set-Location -LiteralPath 'E:\工程实践3'
 New-Item -ItemType Directory -Force -Path 'F:\rs-tools\envs', 'F:\rs-tools\cache\conda-pkgs', 'F:\rs-tools\tmp' | Out-Null
 $env:CONDA_PKGS_DIRS = 'F:\rs-tools\cache\conda-pkgs'
 $env:TEMP = 'F:\rs-tools\tmp'
@@ -90,6 +90,13 @@ python -m pytest -p no:cacheprovider -q
 ```
 
 `activate-rs-city.ps1` 只设置 `CONDA_PREFIX` 派生的 `PATH`、`PROJ_DATA`、`GDAL_DATA`。**缺 `PROJ_DATA` 时 pyproj 会警告 `unable to set PROJ database path`**，CRS 判断可能失败。
+
+脚本的环境前缀默认为上表的 `F:\rs-tools\envs\rs-city`。队友机器上环境不在该位置时，先设置变量再激活，不要改脚本：
+
+```powershell
+$env:RS_CITY_PREFIX = 'D:\conda\envs\rs-city'   # 指向自己的 rs-city 前缀
+. .\activate-rs-city.ps1
+```
 
 两个实测坑：
 

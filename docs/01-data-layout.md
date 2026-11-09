@@ -1,14 +1,14 @@
 # 遥感数据、地图数据与成果的存放位置
 
-默认根目录为 `F:\工程实践3`。下表均为默认**实际目录**，空目录已建立。若把数据迁移到其他 F 盘目录，只修改 `.env` 的 `RS_DATA_ROOT`，下级结构保持一致。
+默认根目录为 `E:\工程实践3`。下表均为默认**实际目录**，空目录已建立。若把数据迁移到其他目录（例如空间不足时换到 `F:` 盘），只修改 `.env` 的 `RS_DATA_ROOT`，下级结构保持一致。
 
 ## 1. 遥感影像
 
 | 数据 | 默认位置 | 每个场景至少保留 |
 | --- | --- | --- |
-| 1992 年 Landsat 5 Level-2 | `F:\工程实践3\data\raw\landsat\1992\level2\<product_id>\` | SR_B1、B2、B3、B4、B5、B7，QA_PIXEL、QA_RADSAT、MTL |
-| 2021 年 Landsat 8 Level-2 | `F:\工程实践3\data\raw\landsat\2021\level2\<product_id>\` | SR_B2、B3、B4、B5、B6、B7，QA_PIXEL、QA_RADSAT、MTL |
-| 2021 年 Landsat 8 Level-1 | `F:\工程实践3\data\raw\landsat\2021\level1\<product_id>\` | B2、B3、B4、B8，QA_PIXEL、QA_RADSAT、MTL |
+| 1992 年 Landsat 5 Level-2 | `E:\工程实践3\data\raw\landsat\1992\level2\<product_id>\` | SR_B1、B2、B3、B4、B5、B7，QA_PIXEL、QA_RADSAT、MTL |
+| 2021 年 Landsat 8 Level-2 | `E:\工程实践3\data\raw\landsat\2021\level2\<product_id>\` | SR_B2、B3、B4、B5、B6、B7，QA_PIXEL、QA_RADSAT、MTL |
+| 2021 年 Landsat 8 Level-1 | `E:\工程实践3\data\raw\landsat\2021\level1\<product_id>\` | B2、B3、B4、B8，QA_PIXEL、QA_RADSAT、MTL |
 
 `<product_id>` 是真实 USGS 产品号，不创建名为该占位表达式的目录，不自行改官方波段文件名。优先保留完整解压产品包及元数据。数据入口为 [USGS EarthExplorer](https://earthexplorer.usgs.gov/)，本项目不实现自动登录或下载。
 
@@ -20,12 +20,12 @@
 
 | 数据 | 默认位置 | 用途 |
 | --- | --- | --- |
-| 1990 年县区边界原件 | `F:\工程实践3\data\raw\boundaries\county\1990\` | 对照材料中的历史区划，记录差异 |
-| 2021 年县区边界原件 | `F:\工程实践3\data\raw\boundaries\county\2021\` | 提取新都区研究范围 |
-| 2021 年街道与镇边界原件 | `F:\工程实践3\data\raw\boundaries\townships\2021\` | 两期统一街镇统计单元 |
-| 参考栅格地图/影像 | `F:\工程实践3\data\raw\reference_maps\raster\` | 辅助判读与制图 |
-| 参考矢量地图 | `F:\工程实践3\data\raw\reference_maps\vector\` | 道路、水系等辅助判读 |
-| QGIS 工程 | `F:\工程实践3\qgis\xindu_1992_2021.qgz` | 标注、检查和地图布局，未来由 F 创建 |
+| 1990 年县区边界原件 | `E:\工程实践3\data\raw\boundaries\county\1990\` | 对照材料中的历史区划，记录差异 |
+| 2021 年县区边界原件 | `E:\工程实践3\data\raw\boundaries\county\2021\` | 提取新都区研究范围 |
+| 2021 年街道与镇边界原件 | `E:\工程实践3\data\raw\boundaries\townships\2021\` | 两期统一街镇统计单元 |
+| 参考栅格地图/影像 | `E:\工程实践3\data\raw\reference_maps\raster\` | 辅助判读与制图 |
+| 参考矢量地图 | `E:\工程实践3\data\raw\reference_maps\vector\` | 道路、水系等辅助判读 |
+| QGIS 工程 | `E:\工程实践3\qgis\xindu_1992_2021.qgz` | 标注、检查和地图布局，未来由 F 创建 |
 
 SHP 必须成套放置，保留同名 `.shp/.shx/.dbf/.prj`，有 `.cpg` 时一并保留。GPKG 保留完整文件及原图层名。坐标系必须从元数据核实，不能因显示位置不对便直接指定为 WGS84。需要重投影时生成 `processed` 文件，不覆盖原件。
 
@@ -79,11 +79,11 @@ SHP 必须成套放置，保留同名 `.shp/.shx/.dbf/.prj`，有 `.cpg` 时一�
 
 | 内容 | 默认目录 |
 | --- | --- |
-| 预处理、分类和变化 GeoTIFF | `F:\工程实践3\outputs\rasters\` |
-| 两期 SHP 和变化 GPKG | `F:\工程实践3\outputs\vectors\` |
-| 混淆矩阵、分类指标、街镇 CSV | `F:\工程实践3\outputs\tables\` |
-| 两期 RF 模型 | `F:\工程实践3\outputs\models\` |
-| 分类图、变化图、统计图 | `F:\工程实践3\outputs\maps\` |
-| 数据、精度、分析、验收报告 | `F:\工程实践3\reports\data\`、`accuracy\`、`analysis\`、`acceptance\` |
+| 预处理、分类和变化 GeoTIFF | `E:\工程实践3\outputs\rasters\` |
+| 两期 SHP 和变化 GPKG | `E:\工程实践3\outputs\vectors\` |
+| 混淆矩阵、分类指标、街镇 CSV | `E:\工程实践3\outputs\tables\` |
+| 两期 RF 模型 | `E:\工程实践3\outputs\models\` |
+| 分类图、变化图、统计图 | `E:\工程实践3\outputs\maps\` |
+| 数据、精度、分析、验收报告 | `E:\工程实践3\reports\data\`、`accuracy\`、`analysis\`、`acceptance\` |
 
 实际遥感文件、地图、样本、模型、输出与本机登记表都被 `.gitignore` 排除。提交到 Git 的是模板、配置、文档和未来源码。交作业时由 F 整理成果包，不依赖 Git 保存大体积数据。
