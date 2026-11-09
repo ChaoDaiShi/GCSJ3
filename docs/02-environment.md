@@ -66,6 +66,40 @@ python -m osgeo_utils.gdal_pansharpen --help
 conda list --explicit | Set-Content -LiteralPath .\reports\acceptance\environment-win-64.txt -Encoding utf8
 ```
 
+## 3.1 本机实际安装记录（2026-11-05）
+
+本机没有 conda/mamba，也没有 QGIS；实际用 **micromamba** 从 conda-forge 建了独立环境，未改动 C 盘安装。
+
+| 项目 | 实际值 |
+| --- | --- |
+| micromamba | `F:\rs-tools\bin\micromamba.exe`（2.10.0），`MAMBA_ROOT_PREFIX=F:\rs-tools\mamba` |
+| 环境前缀 | `F:\rs-tools\envs\rs-city` |
+| 包缓存 | `F:\rs-tools\cache\conda-pkgs` |
+| Python | 3.11.18 |
+| GDAL | 3.12.3（`from osgeo import gdal` 可用） |
+| Rasterio / GeoPandas / Shapely | 1.4.4 / 1.2.0 / 2.2.0 |
+| scikit-learn / numpy / pandas | 1.9.1 / 2.4.6 / 3.1.1 |
+| 包数 | 166（含 pyogrio 0.12.1、pyproj 3.7.2） |
+| 锁文件 | `reports/acceptance/environment-win-64.txt`（`--explicit` 清单） |
+
+激活方式（仓库根目录执行，点号引入作用于当前会话）：
+
+```powershell
+. .\activate-rs-city.ps1
+python -m pytest -p no:cacheprovider -q
+```
+
+`activate-rs-city.ps1` 只设置 `CONDA_PREFIX` 派生的 `PATH`、`PROJ_DATA`、`GDAL_DATA`。**缺 `PROJ_DATA` 时 pyproj 会警告 `unable to set PROJ database path`**，CRS 判断可能失败。
+
+两个实测坑：
+
+1. `micromamba create -f environment.yml` 在本机报 `YAML error in spec file`（连最小示例也复现），因此实际安装是把 `environment.yml` 里的依赖逐条写成命令行参数。`environment.yml` 本身仍是有效的依赖声明，用真正的 conda 应可正常求解。
+2. 不要设置 `PYTHONIOENCODING=utf-8` 再跑测试：子进程输出变 UTF-8，而 `tests/unit/test_cli_*_invocation` 按 GBK 解码父进程捕获的输出，会以 `TypeError: argument of type 'NoneType' is not iterable` 失败。控制台中文乱码用 `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8` 解决，不要动 `PYTHONIOENCODING`。
+
+2026-11-05 实测：`107 passed, 8 failed, 1 skipped`。8 项失败全部是真实数据/成果缺口（缺 `catalog/scenes.csv`、`catalog/boundaries.csv`、1992 L2 影像、`qgis/xindu_1992_2021.qgs`、`reports/analysis/urban_expansion.md`、`reports/data/data_gaps.md`），不是代码缺陷。
+
+---
+
 ## 4. 后续运行方式
 
 开发完成且真实输入到位后，统一从仓库根目录运行五个脚本。参数契约见[公共契约](03-contracts.md)。当前执行会因为入口尚不存在而失败，因此本次不运行这些业务命令。

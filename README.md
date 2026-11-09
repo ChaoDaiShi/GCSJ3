@@ -110,10 +110,11 @@ F:\工程实践3\
 项目保持 Python / GDAL / scikit-learn / GeoPandas 的离线处理路线，所有依赖与临时文件均部署于 F 盘，不侵入 C 盘：
 
 ### 1. 运行环境信息
-- **Python 版本：** Python 3.11.17 (win-64)
-- **核心依赖：** GDAL 3.11、Rasterio 1.4、GeoPandas 1.2、scikit-learn 1.6、Shapely 2.1
+- **Python 版本：** Python 3.11.18 (win-64)
+- **核心依赖：** GDAL 3.12.3、Rasterio 1.4.4、GeoPandas 1.2.0、scikit-learn 1.9.1、Shapely 2.2.0
 - **环境显式锁定：** 参见 [environment-win-64.txt](reports/acceptance/environment-win-64.txt)
 - **环境解释器路径：** `F:\rs-tools\envs\rs-city\python.exe`
+- **激活方式（本机无 conda 激活钩子）：** 仓库根目录执行 `. .\activate-rs-city.ps1`；安装与实测记录见 [环境配置说明](docs/02-environment.md#31-本机实际安装记录2026-11-05)
 
 ### 2. 配置文件
 - **科学参数：** [configs/project.toml](configs/project.toml)（只读核心参数，不包含机器绝对路径）。
@@ -123,7 +124,7 @@ F:\工程实践3\
 
 ## 五、 操作与运行指引
 
-在激活 `rs-city` 环境的终端中运行以下命令：
+在仓库根目录先执行 `. .\activate-rs-city.ps1` 激活 `rs-city` 环境，再运行以下命令：
 
 ### 1. 执行全量自动化测试套件
 ```powershell

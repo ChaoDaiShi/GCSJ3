@@ -2,6 +2,27 @@
 
 原始遥感数据放 `raw/landsat/`，行政边界放 `raw/boundaries/`，参考地图放 `raw/reference_maps/`，标注样本放 `samples/`。已提供的数据和仍缺少的正式输入见下方整理记录。
 
+**动手前先读[数据文件使用规范与回退手册](../docs/08-data-usage-and-rollback.md)**：含本机数据现状（两期 L2 影像已入库、2021 年正式县界与街镇面仍缺）、解压与登记步骤、常见错误处置和三级回退方法。
+
+## 2026-11-05 影像与 1990 县界入库
+
+从 `E:\工程实践3\搜集的数据` 复制（原件保留原位），共 104 个文件、约 3.1 GB，逐文件 SHA-256 记入 `.cache/raw-manifest.csv`。
+
+| 内容 | 入库位置 | 文件数 |
+| --- | --- | ---: |
+| 2021 Landsat 8 L2SP（129/039，云量 0.42%） | `raw/landsat/2021/level2/LC08_L2SP_129039_20210205_20210303_02_T1/` | 27 |
+| 2021 Landsat 8 L1TP（配套 15 m 全色） | `raw/landsat/2021/level1/LC08_L1TP_129039_20210205_20210303_02_T1/` | 24 |
+| 1992 Landsat 5 **L1T**（129/039，DN 值） | `raw/landsat/1992/level1/LT51290391992229BJC00/` | 12 |
+| 1992 Landsat 5 **L2SP**（129/039，2026-11-06 补入） | `raw/landsat/1992/level2/LT05_L2SP_129039_19920816_20200914_02_T1/` | 27 |
+| 1992 误选 L2SP（129/044，云量 100%，不覆盖新都） | `raw/landsat/excluded/LT05_L2SP_129044_19920816_20200914_02_T1/` | 27 |
+| 标称 1990 年全国县级区划 | `raw/boundaries/county/1990/全国县级区划1990年shp/` | 6 |
+
+登记：`catalog/scenes.csv`（2021 L2 与 L1、1992 L2 各一条 selected，1992 L1T 一条 candidate）、`catalog/excluded_scenes.csv`（129/044）、`catalog/boundaries.csv`（1990 县界，`verification_status=pending`）。
+
+**核验结果：** 四条登记与 MTL 的 sensor / date / product_id / processing_level 全部一致；2021 L2 的 SR_B2—B7 与 QA_PIXEL 齐全、7681×7811、EPSG:32648、30 m；1992 L2 的 SR_B1—B5/B7 齐全、7821×7091、30 m；1990 县界含新都县 `CODE1990=510125`。
+
+**仍然阻塞（只剩一项）：** 2021 年面状县界与 9 个街镇面。`prepare_boundaries()` 要求 `boundaries.csv` 中同时存在 `reference_year=2021` 的 `county` 与 `township` 两个面状图层，当前只有 1990 年县界且没有街镇面。两期 L2 影像均已就位，`D:\BaiduNetdiskDownload\全国地理基础信息数据库`（1:400 万、无乡镇面、县面无 `.prj`）经实测不可替代。完整记录见[2026-11-05 入库与运行验证](../reports/data/2026-11-05-data-ingest.md)。
+
 ## 2026-10-29 新增边界与参考资料
 
 已从四个补充包中保存 45 个选定原始文件，生成 3 个便于加载的局部 GPKG。详细来源和限制见[补充说明](../docs/boundary-supplement-2026-10-29.md)及[本机核验报告](../reports/data/2026-10-29-boundary-supplement.md)。
