@@ -1,0 +1,241 @@
+{
+  "method": "DOS + Rayleigh",
+  "dst_grid": [
+    1070,
+    1356
+  ],
+  "1992": {
+    "sensor": "TM",
+    "sun_elevation_deg": 55.68963212,
+    "earth_sun_distance": 0.988132237771947,
+    "bands": {
+      "blue": {
+        "band": 1,
+        "rho_path": 0.16937240958213806,
+        "rayleigh_tau": 0.16267214560698953,
+        "transmittance_sun": 0.7493179997451354,
+        "transmittance_view": 0.8498697762836079,
+        "aoi_pixels_for_dark": 548264
+      },
+      "green": {
+        "band": 2,
+        "rho_path": 0.142573744058609,
+        "rayleigh_tau": 0.09038689268063371,
+        "transmittance_sun": 0.8518432904096589,
+        "transmittance_view": 0.9135776603775505,
+        "aoi_pixels_for_dark": 548264
+      },
+      "red": {
+        "band": 3,
+        "rho_path": 0.10923735797405243,
+        "rayleigh_tau": 0.04636249595440415,
+        "transmittance_sun": 0.9210413688292839,
+        "transmittance_view": 0.9546958260833939,
+        "aoi_pixels_for_dark": 548264
+      },
+      "nir": {
+        "band": 4,
+        "rho_path": 0.18647964298725128,
+        "rayleigh_tau": 0.018356958381432465,
+        "transmittance_sun": 0.9679580451820857,
+        "transmittance_view": 0.9818105043115681,
+        "aoi_pixels_for_dark": 548264
+      },
+      "swir1": {
+        "band": 5,
+        "rho_path": 0.06124419346451759,
+        "rayleigh_tau": 0.0011609160147818573,
+        "transmittance_sun": 0.9979425728049265,
+        "transmittance_view": 0.9988397575875244,
+        "aoi_pixels_for_dark": 548264
+      },
+      "swir2": {
+        "band": 7,
+        "rho_path": 0.03443435579538345,
+        "rayleigh_tau": 0.00035680971950280616,
+        "transmittance_sun": 0.9993671947847369,
+        "transmittance_view": 0.9996432539295147,
+        "aoi_pixels_for_dark": 548264
+      }
+    },
+    "valid_pixels": 1450920
+  },
+  "2021": {
+    "sensor": "OLI",
+    "sun_elevation_deg": 65.34593504,
+    "earth_sun_distance": 0.9853715059180634,
+    "bands": {
+      "blue": {
+        "band": 2,
+        "rho_path": 0.0965043231844902,
+        "rayleigh_tau": 0.1668646494781368,
+        "transmittance_sun": 0.6703052293753728,
+        "transmittance_view": 0.8463141526476214,
+        "aoi_pixels_for_dark": 548909
+      },
+      "green": {
+        "band": 3,
+        "rho_path": 0.07488790154457092,
+        "rayleigh_tau": 0.08973222724891364,
+        "transmittance_sun": 0.8064497309884765,
+        "transmittance_view": 0.9141759439073961,
+        "aoi_pixels_for_dark": 548909
+      },
+      "red": {
+        "band": 4,
+        "rho_path": 0.048820313066244125,
+        "rayleigh_tau": 0.04781393056905641,
+        "transmittance_sun": 0.891701705112808,
+        "transmittance_view": 0.9533111526395223,
+        "aoi_pixels_for_dark": 548909
+      },
+      "nir": {
+        "band": 5,
+        "rho_path": 0.05174059793353081,
+        "rayleigh_tau": 0.01554085494086631,
+        "transmittance_sun": 0.9634296037556751,
+        "transmittance_view": 0.9845792810017248,
+        "aoi_pixels_for_dark": 548909
+      },
+      "swir1": {
+        "band": 6,
+        "rho_path": 0.01896866224706173,
+        "rayleigh_tau": 0.001284120696766821,
+        "transmittance_sun": 0.9969263302718112,
+        "transmittance_view": 0.9987167034334165,
+        "aoi_pixels_for_dark": 548909
+      },
+      "swir2": {
+        "band": 7,
+        "rho_path": 0.011005493812263012,
+        "rayleigh_tau": 0.0003659857903446465,
+        "transmittance_sun": 0.9991230125705995,
+        "transmittance_view": 0.9996340811742851,
+        "aoi_pixels_for_dark": 548909
+      }
+    },
+    "valid_pixels": 1450920
+  },
+  "variant_rayleigh": {
+    "1992": {
+      "ndvi_bias": 0.1962951421737671,
+      "ndvi_mae": 0.2202620506286621,
+      "ndvi_geq_066_km2": 456.3342
+    },
+    "2021": {
+      "ndvi_bias": 0.07104706764221191,
+      "ndvi_mae": 0.08252297341823578,
+      "ndvi_geq_066_km2": 272.4948
+    }
+  },
+  "comparison": {
+    "1992": {
+      "bands": {
+        "blue": {
+          "self_mean": 0.011100112460553646,
+          "l2sp_mean": 0.06381683796644211,
+          "bias": -0.052716728299856186,
+          "rmse": 0.05278463661670685,
+          "pearson_r": 0.9096011754519657
+        },
+        "green": {
+          "self_mean": 0.013052895665168762,
+          "l2sp_mean": 0.0907435342669487,
+          "bias": -0.07769063115119934,
+          "rmse": 0.07775533944368362,
+          "pearson_r": 0.878594034505822
+        },
+        "red": {
+          "self_mean": 0.01695111207664013,
+          "l2sp_mean": 0.07659348845481873,
+          "bias": -0.05964237079024315,
+          "rmse": 0.0598183311522007,
+          "pearson_r": 0.8778875786624515
+        },
+        "nir": {
+          "self_mean": 0.19089150428771973,
+          "l2sp_mean": 0.32115527987480164,
+          "bias": -0.1302637755870819,
+          "rmse": 0.13168452680110931,
+          "pearson_r": 0.8476416613681476
+        },
+        "swir1": {
+          "self_mean": 0.12895101308822632,
+          "l2sp_mean": 0.16645269095897675,
+          "bias": -0.03750167787075043,
+          "rmse": 0.03922077640891075,
+          "pearson_r": 0.8639558053655612
+        },
+        "swir2": {
+          "self_mean": 0.06559189409017563,
+          "l2sp_mean": 0.08532030880451202,
+          "bias": -0.019728409126400948,
+          "rmse": 0.022272581234574318,
+          "pearson_r": 0.857740498989046
+        }
+      },
+      "ndvi_bias": 0.2124631702899933,
+      "ndvi_mae": 0.2264251410961151,
+      "ndvi_rmse": 0.49144741892814636,
+      "ndvi_self_mean": 0.8239583373069763,
+      "ndvi_l2sp_mean": 0.6114951968193054,
+      "ndvi_geq_066_self_km2": 461.1825,
+      "ndvi_geq_066_l2sp_km2": 70.9488,
+      "common_pixels": 548264
+    },
+    "2021": {
+      "bands": {
+        "blue": {
+          "self_mean": 0.03147468715906143,
+          "l2sp_mean": 0.06823677569627762,
+          "bias": -0.03676209971308708,
+          "rmse": 0.03749283030629158,
+          "pearson_r": 0.9684280468094988
+        },
+        "green": {
+          "self_mean": 0.03995238244533539,
+          "l2sp_mean": 0.09134107083082199,
+          "bias": -0.051388684660196304,
+          "rmse": 0.05160712078213692,
+          "pearson_r": 0.992122963595881
+        },
+        "red": {
+          "self_mean": 0.0472092442214489,
+          "l2sp_mean": 0.08129476755857468,
+          "bias": -0.03408552706241608,
+          "rmse": 0.034372519701719284,
+          "pearson_r": 0.9960343685348158
+        },
+        "nir": {
+          "self_mean": 0.2559024691581726,
+          "l2sp_mean": 0.3064199984073639,
+          "bias": -0.05051754042506218,
+          "rmse": 0.05057002231478691,
+          "pearson_r": 0.9998273556587371
+        },
+        "swir1": {
+          "self_mean": 0.16748176515102386,
+          "l2sp_mean": 0.19312237203121185,
+          "bias": -0.025640621781349182,
+          "rmse": 0.025718705728650093,
+          "pearson_r": 0.9997646304650738
+        },
+        "swir2": {
+          "self_mean": 0.10415419191122055,
+          "l2sp_mean": 0.12382481247186661,
+          "bias": -0.019670618698000908,
+          "rmse": 0.02006569877266884,
+          "pearson_r": 0.9998672618581144
+        }
+      },
+      "ndvi_bias": 0.10116814076900482,
+      "ndvi_mae": 0.1039881557226181,
+      "ndvi_rmse": 0.24009662866592407,
+      "ndvi_self_mean": 0.6672267317771912,
+      "ndvi_l2sp_mean": 0.5660585761070251,
+      "ndvi_geq_066_self_km2": 292.4163,
+      "ndvi_geq_066_l2sp_km2": 197.8965,
+      "common_pixels": 548909
+    }
+  }
+}

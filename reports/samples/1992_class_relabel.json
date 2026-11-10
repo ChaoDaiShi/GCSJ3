@@ -1,0 +1,361 @@
+{
+  "date": "2026-11-09",
+  "year": 1992,
+  "scene_date": "1992-08-16",
+  "selection_rule": "top12_by_score_per_class",
+  "confirmed_by": "user",
+  "confirmation_note": "用户 2026-11-09 回复「按照建议」，1992 年采用候选清单中每类得分前 12 个；未逐个目视判读",
+  "label_source": "human_confirmed_candidate",
+  "per_class": {
+    "1": {
+      "name": "城镇及建设用地",
+      "replaced_polygons": 12,
+      "new_polygons": 12,
+      "candidates": [
+        {
+          "cand_id": "1992_u13",
+          "sample_id": "1992_c1_g01_p01",
+          "township": "桂湖街道",
+          "area_ha": 69.03,
+          "ndvi": 0.2787,
+          "ndbi": -0.089,
+          "slope": 2.57
+        },
+        {
+          "cand_id": "1992_u09",
+          "sample_id": "1992_c1_g02_p01",
+          "township": "石板滩街道",
+          "area_ha": 8.73,
+          "ndvi": 0.325,
+          "ndbi": -0.0361,
+          "slope": 2.7
+        },
+        {
+          "cand_id": "1992_u01",
+          "sample_id": "1992_c1_g03_p01",
+          "township": "石板滩街道",
+          "area_ha": 5.13,
+          "ndvi": 0.3293,
+          "ndbi": -0.024,
+          "slope": 2.07
+        },
+        {
+          "cand_id": "1992_u02",
+          "sample_id": "1992_c1_g04_p01",
+          "township": "桂湖街道",
+          "area_ha": 5.31,
+          "ndvi": 0.2729,
+          "ndbi": -0.1028,
+          "slope": 2.82
+        },
+        {
+          "cand_id": "1992_u03",
+          "sample_id": "1992_c1_g05_p01",
+          "township": "石板滩街道",
+          "area_ha": 3.69,
+          "ndvi": 0.3343,
+          "ndbi": -0.0472,
+          "slope": 1.96
+        },
+        {
+          "cand_id": "1992_u04",
+          "sample_id": "1992_c1_g06_p01",
+          "township": "新都街道",
+          "area_ha": 4.86,
+          "ndvi": 0.3315,
+          "ndbi": -0.0559,
+          "slope": 2.1
+        },
+        {
+          "cand_id": "1992_u10",
+          "sample_id": "1992_c1_g07_p01",
+          "township": "新繁街道",
+          "area_ha": 13.59,
+          "ndvi": 0.2941,
+          "ndbi": -0.1127,
+          "slope": 2.61
+        },
+        {
+          "cand_id": "1992_u05",
+          "sample_id": "1992_c1_g08_p01",
+          "township": "新都街道",
+          "area_ha": 3.33,
+          "ndvi": 0.3326,
+          "ndbi": -0.0604,
+          "slope": 2.21
+        },
+        {
+          "cand_id": "1992_u11",
+          "sample_id": "1992_c1_g09_p01",
+          "township": "三河街道",
+          "area_ha": 14.04,
+          "ndvi": 0.3039,
+          "ndbi": -0.1144,
+          "slope": 5.2
+        },
+        {
+          "cand_id": "1992_u06",
+          "sample_id": "1992_c1_g10_p01",
+          "township": "新都街道",
+          "area_ha": 3.87,
+          "ndvi": 0.281,
+          "ndbi": -0.1201,
+          "slope": 2.85
+        },
+        {
+          "cand_id": "1992_u07",
+          "sample_id": "1992_c1_g11_p01",
+          "township": "石板滩街道",
+          "area_ha": 3.15,
+          "ndvi": 0.3494,
+          "ndbi": -0.0523,
+          "slope": 3.93
+        },
+        {
+          "cand_id": "1992_u08",
+          "sample_id": "1992_c1_g12_p01",
+          "township": "新都街道",
+          "area_ha": 3.33,
+          "ndvi": 0.2883,
+          "ndbi": -0.1176,
+          "slope": 2.95
+        }
+      ]
+    },
+    "2": {
+      "name": "耕地",
+      "replaced_polygons": 12,
+      "new_polygons": 12,
+      "candidates": [
+        {
+          "cand_id": "1992_a01",
+          "sample_id": "1992_c2_g01_p01",
+          "township": "新繁街道",
+          "area_ha": 2390.4,
+          "ndvi": 0.6164,
+          "ndbi": -0.3186,
+          "slope": 1.5
+        },
+        {
+          "cand_id": "1992_a02",
+          "sample_id": "1992_c2_g02_p01",
+          "township": "桂湖街道",
+          "area_ha": 1917.09,
+          "ndvi": 0.6222,
+          "ndbi": -0.3304,
+          "slope": 1.45
+        },
+        {
+          "cand_id": "1992_a03",
+          "sample_id": "1992_c2_g03_p01",
+          "township": "斑竹园街道",
+          "area_ha": 1665.45,
+          "ndvi": 0.6254,
+          "ndbi": -0.3333,
+          "slope": 1.47
+        },
+        {
+          "cand_id": "1992_a04",
+          "sample_id": "1992_c2_g04_p01",
+          "township": "新都街道",
+          "area_ha": 1098.09,
+          "ndvi": 0.6112,
+          "ndbi": -0.3395,
+          "slope": 1.56
+        },
+        {
+          "cand_id": "1992_a05",
+          "sample_id": "1992_c2_g05_p01",
+          "township": "石板滩街道",
+          "area_ha": 929.43,
+          "ndvi": 0.5922,
+          "ndbi": -0.2948,
+          "slope": 1.69
+        },
+        {
+          "cand_id": "1992_a06",
+          "sample_id": "1992_c2_g06_p01",
+          "township": "斑竹园街道",
+          "area_ha": 904.68,
+          "ndvi": 0.6337,
+          "ndbi": -0.3323,
+          "slope": 1.42
+        },
+        {
+          "cand_id": "1992_a07",
+          "sample_id": "1992_c2_g07_p01",
+          "township": "清流镇",
+          "area_ha": 869.76,
+          "ndvi": 0.6121,
+          "ndbi": -0.3111,
+          "slope": 1.51
+        },
+        {
+          "cand_id": "1992_a08",
+          "sample_id": "1992_c2_g08_p01",
+          "township": "石板滩街道",
+          "area_ha": 764.01,
+          "ndvi": 0.6112,
+          "ndbi": -0.2908,
+          "slope": 1.65
+        },
+        {
+          "cand_id": "1992_a09",
+          "sample_id": "1992_c2_g09_p01",
+          "township": "石板滩街道",
+          "area_ha": 567.18,
+          "ndvi": 0.5981,
+          "ndbi": -0.2841,
+          "slope": 1.61
+        },
+        {
+          "cand_id": "1992_a10",
+          "sample_id": "1992_c2_g10_p01",
+          "township": "大丰街道",
+          "area_ha": 406.8,
+          "ndvi": 0.6348,
+          "ndbi": -0.3426,
+          "slope": 1.42
+        },
+        {
+          "cand_id": "1992_a11",
+          "sample_id": "1992_c2_g11_p01",
+          "township": "军屯镇",
+          "area_ha": 310.77,
+          "ndvi": 0.6281,
+          "ndbi": -0.3393,
+          "slope": 1.36
+        },
+        {
+          "cand_id": "1992_a12",
+          "sample_id": "1992_c2_g12_p01",
+          "township": "斑竹园街道",
+          "area_ha": 300.24,
+          "ndvi": 0.6388,
+          "ndbi": -0.3473,
+          "slope": 1.38
+        }
+      ]
+    },
+    "3": {
+      "name": "林草植被",
+      "replaced_polygons": 12,
+      "new_polygons": 12,
+      "candidates": [
+        {
+          "cand_id": "1992_f01",
+          "sample_id": "1992_c3_g01_p01",
+          "township": "新都街道",
+          "area_ha": 5.76,
+          "ndvi": 0.6629,
+          "ndbi": -0.3546,
+          "slope": 6.15
+        },
+        {
+          "cand_id": "1992_f02",
+          "sample_id": "1992_c3_g02_p01",
+          "township": "桂湖街道",
+          "area_ha": 4.95,
+          "ndvi": 0.658,
+          "ndbi": -0.3834,
+          "slope": 5.88
+        },
+        {
+          "cand_id": "1992_f03",
+          "sample_id": "1992_c3_g03_p01",
+          "township": "军屯镇",
+          "area_ha": 6.21,
+          "ndvi": 0.6765,
+          "ndbi": -0.3912,
+          "slope": 5.83
+        },
+        {
+          "cand_id": "1992_f04",
+          "sample_id": "1992_c3_g04_p01",
+          "township": "新繁街道",
+          "area_ha": 5.49,
+          "ndvi": 0.6674,
+          "ndbi": -0.3628,
+          "slope": 5.67
+        },
+        {
+          "cand_id": "1992_f05",
+          "sample_id": "1992_c3_g05_p01",
+          "township": "新都街道",
+          "area_ha": 6.39,
+          "ndvi": 0.6628,
+          "ndbi": -0.3559,
+          "slope": 5.65
+        },
+        {
+          "cand_id": "1992_f06",
+          "sample_id": "1992_c3_g06_p01",
+          "township": "石板滩街道",
+          "area_ha": 6.93,
+          "ndvi": 0.6751,
+          "ndbi": -0.3301,
+          "slope": 5.5
+        },
+        {
+          "cand_id": "1992_f07",
+          "sample_id": "1992_c3_g07_p01",
+          "township": "新都街道",
+          "area_ha": 6.57,
+          "ndvi": 0.6617,
+          "ndbi": -0.3582,
+          "slope": 5.43
+        },
+        {
+          "cand_id": "1992_f08",
+          "sample_id": "1992_c3_g08_p01",
+          "township": "新都街道",
+          "area_ha": 28.35,
+          "ndvi": 0.6971,
+          "ndbi": -0.2954,
+          "slope": 5.16
+        },
+        {
+          "cand_id": "1992_f09",
+          "sample_id": "1992_c3_g09_p01",
+          "township": "大丰街道",
+          "area_ha": 8.01,
+          "ndvi": 0.6674,
+          "ndbi": -0.3709,
+          "slope": 4.75
+        },
+        {
+          "cand_id": "1992_f10",
+          "sample_id": "1992_c3_g10_p01",
+          "township": "军屯镇",
+          "area_ha": 5.58,
+          "ndvi": 0.6673,
+          "ndbi": -0.3865,
+          "slope": 4.49
+        },
+        {
+          "cand_id": "1992_f11",
+          "sample_id": "1992_c3_g11_p01",
+          "township": "军屯镇",
+          "area_ha": 5.31,
+          "ndvi": 0.6838,
+          "ndbi": -0.3801,
+          "slope": 4.2
+        },
+        {
+          "cand_id": "1992_f12",
+          "sample_id": "1992_c3_g12_p01",
+          "township": "斑竹园街道",
+          "area_ha": 5.76,
+          "ndvi": 0.6629,
+          "ndbi": -0.3685,
+          "slope": 4.15
+        }
+      ]
+    }
+  },
+  "kept_unchanged": {
+    "class_id": 4,
+    "polygons": 8
+  },
+  "overlaps": []
+}

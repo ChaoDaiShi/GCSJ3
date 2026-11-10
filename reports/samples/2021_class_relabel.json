@@ -1,0 +1,361 @@
+{
+  "date": "2026-11-09",
+  "year": 2021,
+  "scene_date": "2021-07-31",
+  "selection_rule": "top12_by_score_per_class",
+  "confirmed_by": "user",
+  "confirmation_note": "用户 2026-11-09 回复「按照建议」，采用候选清单中每类得分前 12 个；未逐个目视判读",
+  "label_source": "human_confirmed_candidate",
+  "per_class": {
+    "1": {
+      "name": "城镇及建设用地",
+      "replaced_polygons": 12,
+      "new_polygons": 12,
+      "candidates": [
+        {
+          "cand_id": "2021_u09",
+          "sample_id": "2021_c1_g01_p01",
+          "township": "三河街道",
+          "area_ha": 18.99,
+          "ndvi": 0.1562,
+          "ndbi": 0.1111,
+          "slope": 1.6
+        },
+        {
+          "cand_id": "2021_u10",
+          "sample_id": "2021_c1_g02_p01",
+          "township": "新都街道",
+          "area_ha": 8.55,
+          "ndvi": 0.1179,
+          "ndbi": 0.0509,
+          "slope": 1.26
+        },
+        {
+          "cand_id": "2021_u01",
+          "sample_id": "2021_c1_g03_p01",
+          "township": "新繁街道",
+          "area_ha": 4.77,
+          "ndvi": 0.1525,
+          "ndbi": 0.0886,
+          "slope": 1.56
+        },
+        {
+          "cand_id": "2021_u11",
+          "sample_id": "2021_c1_g04_p01",
+          "township": "新都街道",
+          "area_ha": 22.95,
+          "ndvi": 0.1463,
+          "ndbi": 0.047,
+          "slope": 2.07
+        },
+        {
+          "cand_id": "2021_u02",
+          "sample_id": "2021_c1_g05_p01",
+          "township": "新都街道",
+          "area_ha": 3.96,
+          "ndvi": 0.1841,
+          "ndbi": 0.1159,
+          "slope": 1.85
+        },
+        {
+          "cand_id": "2021_u17",
+          "sample_id": "2021_c1_g06_p01",
+          "township": "石板滩街道",
+          "area_ha": 113.58,
+          "ndvi": 0.1861,
+          "ndbi": 0.0335,
+          "slope": 2.54
+        },
+        {
+          "cand_id": "2021_u03",
+          "sample_id": "2021_c1_g07_p01",
+          "township": "斑竹园街道",
+          "area_ha": 4.59,
+          "ndvi": 0.2423,
+          "ndbi": 0.1428,
+          "slope": 2.52
+        },
+        {
+          "cand_id": "2021_u12",
+          "sample_id": "2021_c1_g08_p01",
+          "township": "新都街道",
+          "area_ha": 8.28,
+          "ndvi": 0.2067,
+          "ndbi": 0.08,
+          "slope": 3.25
+        },
+        {
+          "cand_id": "2021_u18",
+          "sample_id": "2021_c1_g09_p01",
+          "township": "桂湖街道",
+          "area_ha": 153.27,
+          "ndvi": 0.2015,
+          "ndbi": 0.0127,
+          "slope": 3.39
+        },
+        {
+          "cand_id": "2021_u19",
+          "sample_id": "2021_c1_g10_p01",
+          "township": "大丰街道",
+          "area_ha": 462.96,
+          "ndvi": 0.2389,
+          "ndbi": 0.0227,
+          "slope": 2.3
+        },
+        {
+          "cand_id": "2021_u04",
+          "sample_id": "2021_c1_g11_p01",
+          "township": "斑竹园街道",
+          "area_ha": 4.32,
+          "ndvi": 0.1663,
+          "ndbi": 0.0393,
+          "slope": 7.63
+        },
+        {
+          "cand_id": "2021_u20",
+          "sample_id": "2021_c1_g12_p01",
+          "township": "新都街道",
+          "area_ha": 168.21,
+          "ndvi": 0.2367,
+          "ndbi": 0.0404,
+          "slope": 2.58
+        }
+      ]
+    },
+    "2": {
+      "name": "耕地",
+      "replaced_polygons": 12,
+      "new_polygons": 12,
+      "candidates": [
+        {
+          "cand_id": "2021_a01",
+          "sample_id": "2021_c2_g01_p01",
+          "township": "桂湖街道",
+          "area_ha": 504.72,
+          "ndvi": 0.6271,
+          "ndbi": -0.2507,
+          "slope": 1.5
+        },
+        {
+          "cand_id": "2021_a02",
+          "sample_id": "2021_c2_g02_p01",
+          "township": "斑竹园街道",
+          "area_ha": 220.86,
+          "ndvi": 0.6427,
+          "ndbi": -0.2659,
+          "slope": 1.63
+        },
+        {
+          "cand_id": "2021_a03",
+          "sample_id": "2021_c2_g03_p01",
+          "township": "石板滩街道",
+          "area_ha": 216.0,
+          "ndvi": 0.6347,
+          "ndbi": -0.2537,
+          "slope": 1.54
+        },
+        {
+          "cand_id": "2021_a04",
+          "sample_id": "2021_c2_g04_p01",
+          "township": "石板滩街道",
+          "area_ha": 154.8,
+          "ndvi": 0.6572,
+          "ndbi": -0.2298,
+          "slope": 1.57
+        },
+        {
+          "cand_id": "2021_a05",
+          "sample_id": "2021_c2_g05_p01",
+          "township": "斑竹园街道",
+          "area_ha": 106.29,
+          "ndvi": 0.613,
+          "ndbi": -0.2225,
+          "slope": 1.59
+        },
+        {
+          "cand_id": "2021_a06",
+          "sample_id": "2021_c2_g06_p01",
+          "township": "新繁街道",
+          "area_ha": 105.3,
+          "ndvi": 0.647,
+          "ndbi": -0.2738,
+          "slope": 1.37
+        },
+        {
+          "cand_id": "2021_a07",
+          "sample_id": "2021_c2_g07_p01",
+          "township": "军屯镇",
+          "area_ha": 92.43,
+          "ndvi": 0.6527,
+          "ndbi": -0.2341,
+          "slope": 1.45
+        },
+        {
+          "cand_id": "2021_a08",
+          "sample_id": "2021_c2_g08_p01",
+          "township": "斑竹园街道",
+          "area_ha": 97.74,
+          "ndvi": 0.6241,
+          "ndbi": -0.254,
+          "slope": 1.47
+        },
+        {
+          "cand_id": "2021_a09",
+          "sample_id": "2021_c2_g09_p01",
+          "township": "军屯镇",
+          "area_ha": 79.74,
+          "ndvi": 0.6368,
+          "ndbi": -0.2377,
+          "slope": 1.6
+        },
+        {
+          "cand_id": "2021_a10",
+          "sample_id": "2021_c2_g10_p01",
+          "township": "斑竹园街道",
+          "area_ha": 82.89,
+          "ndvi": 0.6306,
+          "ndbi": -0.2609,
+          "slope": 1.5
+        },
+        {
+          "cand_id": "2021_a11",
+          "sample_id": "2021_c2_g11_p01",
+          "township": "斑竹园街道",
+          "area_ha": 79.29,
+          "ndvi": 0.6298,
+          "ndbi": -0.2533,
+          "slope": 1.38
+        },
+        {
+          "cand_id": "2021_a12",
+          "sample_id": "2021_c2_g12_p01",
+          "township": "石板滩街道",
+          "area_ha": 71.28,
+          "ndvi": 0.6342,
+          "ndbi": -0.2195,
+          "slope": 1.71
+        }
+      ]
+    },
+    "3": {
+      "name": "林草植被",
+      "replaced_polygons": 12,
+      "new_polygons": 12,
+      "candidates": [
+        {
+          "cand_id": "2021_f01",
+          "sample_id": "2021_c3_g01_p01",
+          "township": "新繁街道",
+          "area_ha": 5.58,
+          "ndvi": 0.7212,
+          "ndbi": -0.2886,
+          "slope": 9.37
+        },
+        {
+          "cand_id": "2021_f02",
+          "sample_id": "2021_c3_g02_p01",
+          "township": "石板滩街道",
+          "area_ha": 77.76,
+          "ndvi": 0.7599,
+          "ndbi": -0.3053,
+          "slope": 8.07
+        },
+        {
+          "cand_id": "2021_f03",
+          "sample_id": "2021_c3_g03_p01",
+          "township": "三河街道",
+          "area_ha": 12.06,
+          "ndvi": 0.7527,
+          "ndbi": -0.2978,
+          "slope": 7.04
+        },
+        {
+          "cand_id": "2021_f04",
+          "sample_id": "2021_c3_g04_p01",
+          "township": "三河街道",
+          "area_ha": 29.52,
+          "ndvi": 0.7295,
+          "ndbi": -0.2895,
+          "slope": 7.06
+        },
+        {
+          "cand_id": "2021_f05",
+          "sample_id": "2021_c3_g05_p01",
+          "township": "新都街道",
+          "area_ha": 7.29,
+          "ndvi": 0.7429,
+          "ndbi": -0.303,
+          "slope": 6.72
+        },
+        {
+          "cand_id": "2021_f06",
+          "sample_id": "2021_c3_g06_p01",
+          "township": "新都街道",
+          "area_ha": 12.33,
+          "ndvi": 0.7634,
+          "ndbi": -0.304,
+          "slope": 6.25
+        },
+        {
+          "cand_id": "2021_f07",
+          "sample_id": "2021_c3_g07_p01",
+          "township": "新都街道",
+          "area_ha": 7.92,
+          "ndvi": 0.7347,
+          "ndbi": -0.3109,
+          "slope": 6.16
+        },
+        {
+          "cand_id": "2021_f08",
+          "sample_id": "2021_c3_g08_p01",
+          "township": "新都街道",
+          "area_ha": 8.37,
+          "ndvi": 0.7387,
+          "ndbi": -0.3118,
+          "slope": 5.81
+        },
+        {
+          "cand_id": "2021_f09",
+          "sample_id": "2021_c3_g09_p01",
+          "township": "清流镇",
+          "area_ha": 4.95,
+          "ndvi": 0.79,
+          "ndbi": -0.4007,
+          "slope": 5.76
+        },
+        {
+          "cand_id": "2021_f10",
+          "sample_id": "2021_c3_g10_p01",
+          "township": "军屯镇",
+          "area_ha": 9.63,
+          "ndvi": 0.7742,
+          "ndbi": -0.3792,
+          "slope": 5.61
+        },
+        {
+          "cand_id": "2021_f11",
+          "sample_id": "2021_c3_g11_p01",
+          "township": "军屯镇",
+          "area_ha": 9.36,
+          "ndvi": 0.7764,
+          "ndbi": -0.3785,
+          "slope": 5.57
+        },
+        {
+          "cand_id": "2021_f12",
+          "sample_id": "2021_c3_g12_p01",
+          "township": "三河街道",
+          "area_ha": 11.25,
+          "ndvi": 0.723,
+          "ndbi": -0.2802,
+          "slope": 5.52
+        }
+      ]
+    }
+  },
+  "kept_unchanged": {
+    "class_id": 4,
+    "polygons": 8
+  },
+  "overlaps": []
+}

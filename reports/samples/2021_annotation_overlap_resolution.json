@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-10",
+  "year": 2021,
+  "rule": "按优先级 城镇>水体>耕地>林草 裁切重叠部分，100 m² 以下碎片丢弃",
+  "changes": [
+    {
+      "class_id": 3,
+      "name": "林草植被",
+      "polygons_before": 12,
+      "polygons_after": 12,
+      "area_before_ha": 1232.62,
+      "area_after_ha": 1174.8,
+      "trimmed_ha": 57.82
+    }
+  ],
+  "final": {
+    "1": {
+      "name": "城镇及建设用地",
+      "polygons": 12,
+      "area_ha": 1521.16
+    },
+    "2": {
+      "name": "耕地",
+      "polygons": 12,
+      "area_ha": 750.65
+    },
+    "3": {
+      "name": "林草植被",
+      "polygons": 12,
+      "area_ha": 1174.8
+    },
+    "4": {
+      "name": "水体",
+      "polygons": 8,
+      "area_ha": 72.3
+    }
+  }
+}

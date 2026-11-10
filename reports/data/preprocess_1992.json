@@ -1,0 +1,28 @@
+{
+  "year": 1992,
+  "product_id": "LT05_L2SP_129039_19920816_20200914_02_T1",
+  "sensor": "LANDSAT_5",
+  "acquisition_date": "1992-08-16",
+  "crs": "EPSG:32648",
+  "bounds": [
+    394950.0,
+    3394140.0,
+    435630.0,
+    3426240.0
+  ],
+  "width": 1356,
+  "height": 1070,
+  "bands": [
+    "blue",
+    "green",
+    "red",
+    "nir",
+    "swir1",
+    "swir2"
+  ],
+  "total_aoi_pixels": 557616,
+  "valid_pixels": 548264,
+  "valid_ratio": 0.983229,
+  "nodata_float": -9999.0,
+  "mask_nodata": 255
+}

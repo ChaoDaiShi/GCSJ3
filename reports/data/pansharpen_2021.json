@@ -1,0 +1,30 @@
+{
+  "radiometry": "TOA",
+  "purpose": "visualization",
+  "fusion_algorithm": "Gram-Schmidt (GSA)",
+  "product_id": "LC08_L1TP_129039_20210731_20210804_02_T1",
+  "sun_elevation_deg": 65.34593504,
+  "resolution": 15,
+  "width": 2712,
+  "height": 2140,
+  "rgb_bands": [
+    4,
+    3,
+    2
+  ],
+  "pan_band": 8,
+  "nodata_val": -9999.0,
+  "gs_intercept": -0.0059946596036453085,
+  "gs_weights": [
+    0.4247172608510804,
+    0.5615923870297141,
+    0.05359308609687924
+  ],
+  "gs_gains": [
+    1.136771924284407,
+    0.8464298009621284,
+    0.7807872233361837
+  ],
+  "valid_pixels": 5803680,
+  "band_scope_note": "B8(0.50-0.68um) \u4ec5\u8986\u76d6 B2/B3/B4\uff1bNIR \u4e0e SWIR \u672a\u505a 15m \u5916\u63a8"
+}

@@ -1,0 +1,278 @@
+{
+  "year": 2021,
+  "scene": "LC08_L2SP_129039_20210731_20210804_02_T1",
+  "criteria": {
+    "ndvi_max": 0.3,
+    "ndbi_min": -0.05,
+    "mndwi_max": 0.0,
+    "min_area_ha": 3.0,
+    "min_separation_m": 2500.0
+  },
+  "candidate_count": 24,
+  "candidates": [
+    {
+      "cand_id": "2021_u01",
+      "township": "桂湖街道",
+      "area_ha": 22.86,
+      "ndvi_mean": 0.11,
+      "ndbi_mean": 0.1754,
+      "cx": 415245.0,
+      "cy": 3408405.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u02",
+      "township": "新都街道",
+      "area_ha": 6.66,
+      "ndvi_mean": 0.0889,
+      "ndbi_mean": 0.0906,
+      "cx": 426525.0,
+      "cy": 3413670.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u03",
+      "township": "新繁街道",
+      "area_ha": 3.69,
+      "ndvi_mean": 0.1095,
+      "ndbi_mean": 0.1173,
+      "cx": 403065.0,
+      "cy": 3418425.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u04",
+      "township": "新都街道",
+      "area_ha": 18.09,
+      "ndvi_mean": 0.1501,
+      "ndbi_mean": 0.1247,
+      "cx": 426375.0,
+      "cy": 3408570.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u05",
+      "township": "石板滩街道",
+      "area_ha": 58.14,
+      "ndvi_mean": 0.1551,
+      "ndbi_mean": 0.0634,
+      "cx": 427650.0,
+      "cy": 3399135.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u06",
+      "township": "新都街道",
+      "area_ha": 5.31,
+      "ndvi_mean": 0.161,
+      "ndbi_mean": 0.0984,
+      "cx": 420300.0,
+      "cy": 3407715.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u07",
+      "township": "新繁街道",
+      "area_ha": 103.23,
+      "ndvi_mean": 0.1922,
+      "ndbi_mean": 0.0639,
+      "cx": 406140.0,
+      "cy": 3413775.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u08",
+      "township": "斑竹园街道",
+      "area_ha": 3.06,
+      "ndvi_mean": 0.1253,
+      "ndbi_mean": 0.0616,
+      "cx": 417750.0,
+      "cy": 3412260.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u09",
+      "township": "斑竹园街道",
+      "area_ha": 6.03,
+      "ndvi_mean": 0.1881,
+      "ndbi_mean": 0.108,
+      "cx": 413460.0,
+      "cy": 3414720.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u10",
+      "township": "大丰街道",
+      "area_ha": 190.89,
+      "ndvi_mean": 0.1993,
+      "ndbi_mean": 0.0426,
+      "cx": 407505.0,
+      "cy": 3408285.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u11",
+      "township": "新都街道",
+      "area_ha": 6.57,
+      "ndvi_mean": 0.1343,
+      "ndbi_mean": 0.0258,
+      "cx": 427785.0,
+      "cy": 3411330.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u12",
+      "township": "石板滩街道",
+      "area_ha": 8.46,
+      "ndvi_mean": 0.1445,
+      "ndbi_mean": 0.0175,
+      "cx": 423210.0,
+      "cy": 3400905.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u13",
+      "township": "军屯镇",
+      "area_ha": 3.51,
+      "ndvi_mean": 0.1375,
+      "ndbi_mean": 0.0121,
+      "cx": 415335.0,
+      "cy": 3418725.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u14",
+      "township": "桂湖街道",
+      "area_ha": 3.87,
+      "ndvi_mean": 0.1602,
+      "ndbi_mean": 0.0217,
+      "cx": 421425.0,
+      "cy": 3412785.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u15",
+      "township": "新繁街道",
+      "area_ha": 6.48,
+      "ndvi_mean": 0.1861,
+      "ndbi_mean": 0.035,
+      "cx": 406935.0,
+      "cy": 3410880.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u16",
+      "township": "桂湖街道",
+      "area_ha": 15.21,
+      "ndvi_mean": 0.2209,
+      "ndbi_mean": 0.0538,
+      "cx": 417930.0,
+      "cy": 3409215.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u17",
+      "township": "石板滩街道",
+      "area_ha": 4.77,
+      "ndvi_mean": 0.1684,
+      "ndbi_mean": 0.017,
+      "cx": 424470.0,
+      "cy": 3403215.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u18",
+      "township": "新都街道",
+      "area_ha": 8.64,
+      "ndvi_mean": 0.2135,
+      "ndbi_mean": 0.0494,
+      "cx": 426495.0,
+      "cy": 3404715.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u19",
+      "township": "三河街道",
+      "area_ha": 6.48,
+      "ndvi_mean": 0.1805,
+      "ndbi_mean": 0.0208,
+      "cx": 417150.0,
+      "cy": 3405435.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u20",
+      "township": "斑竹园街道",
+      "area_ha": 28.17,
+      "ndvi_mean": 0.2353,
+      "ndbi_mean": 0.047,
+      "cx": 411015.0,
+      "cy": 3410385.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u21",
+      "township": "新繁街道",
+      "area_ha": 5.85,
+      "ndvi_mean": 0.1902,
+      "ndbi_mean": 0.0264,
+      "cx": 404970.0,
+      "cy": 3416535.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u22",
+      "township": "大丰街道",
+      "area_ha": 3.78,
+      "ndvi_mean": 0.1454,
+      "ndbi_mean": -0.0144,
+      "cx": 411135.0,
+      "cy": 3403350.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u23",
+      "township": "新繁街道",
+      "area_ha": 4.05,
+      "ndvi_mean": 0.1669,
+      "ndbi_mean": -0.0015,
+      "cx": 402780.0,
+      "cy": 3411495.0,
+      "review": 0,
+      "label_source": "candidate"
+    },
+    {
+      "cand_id": "2021_u24",
+      "township": "新都街道",
+      "area_ha": 6.03,
+      "ndvi_mean": 0.2091,
+      "ndbi_mean": 0.0198,
+      "cx": 420450.0,
+      "cy": 3410385.0,
+      "review": 0,
+      "label_source": "candidate"
+    }
+  ]
+}

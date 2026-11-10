@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-09",
+  "year": 1992,
+  "scene_date": "1992-08-16",
+  "label_source": "manual_annotation",
+  "annotator": "human",
+  "note": "人工在对应年份影像上绘制，每类 12—15 个面，跨街镇分散",
+  "per_class": {
+    "1": {
+      "name": "城镇及建设用地",
+      "polygons": 13,
+      "area_ha": 232.3
+    },
+    "2": {
+      "name": "耕地",
+      "polygons": 12,
+      "area_ha": 168.92
+    },
+    "3": {
+      "name": "林草植被",
+      "polygons": 12,
+      "area_ha": 540.21
+    },
+    "4": {
+      "name": "水体",
+      "polygons": 8,
+      "area_ha": 78.48
+    }
+  },
+  "total_polygons": 45,
+  "backup": "labels.gpkg.bak_Y1992_manual"
+}

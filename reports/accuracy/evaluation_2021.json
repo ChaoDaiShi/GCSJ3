@@ -1,0 +1,124 @@
+{
+  "year": 2021,
+  "total_samples": 5973,
+  "total_groups": 0,
+  "oa_raw": 0.8660639544617446,
+  "oa_final": 0.8675707349740499,
+  "oa_threshold": 0.75,
+  "passed_oa_threshold": true,
+  "built_up_f1_target": 0.75,
+  "built_up_f1_final": 1.0,
+  "passed_f1_target": true,
+  "matrix_raw": [
+    [
+      2155,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1398,
+      140,
+      0
+    ],
+    [
+      0,
+      660,
+      1462,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      158
+    ]
+  ],
+  "matrix_final": [
+    [
+      2155,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1408,
+      130,
+      0
+    ],
+    [
+      0,
+      661,
+      1461,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      158
+    ]
+  ],
+  "metrics_raw": [
+    {
+      "class_id": 1,
+      "support": 2155,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "class_id": 2,
+      "support": 1538,
+      "precision": 0.6793,
+      "recall": 0.909,
+      "f1": 0.7775
+    },
+    {
+      "class_id": 3,
+      "support": 2122,
+      "precision": 0.9126,
+      "recall": 0.689,
+      "f1": 0.7852
+    },
+    {
+      "class_id": 4,
+      "support": 158,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  ],
+  "metrics_final": [
+    {
+      "class_id": 1,
+      "support": 2155,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "class_id": 2,
+      "support": 1538,
+      "precision": 0.6805,
+      "recall": 0.9155,
+      "f1": 0.7807
+    },
+    {
+      "class_id": 3,
+      "support": 2122,
+      "precision": 0.9183,
+      "recall": 0.6885,
+      "f1": 0.787
+    },
+    {
+      "class_id": 4,
+      "support": 158,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  ]
+}

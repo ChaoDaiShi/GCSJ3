@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-09",
+  "year": 2021,
+  "scene_date": "2021-07-31",
+  "label_source": "manual_annotation",
+  "annotator": "human",
+  "note": "人工在对应年份影像上绘制，每类 12—15 个面，跨街镇分散",
+  "per_class": {
+    "1": {
+      "name": "城镇及建设用地",
+      "polygons": 12,
+      "area_ha": 1521.16
+    },
+    "2": {
+      "name": "耕地",
+      "polygons": 12,
+      "area_ha": 750.65
+    },
+    "3": {
+      "name": "林草植被",
+      "polygons": 12,
+      "area_ha": 1174.8
+    },
+    "4": {
+      "name": "水体",
+      "polygons": 8,
+      "area_ha": 72.3
+    }
+  },
+  "total_polygons": 44,
+  "backup": "labels.gpkg.bak_Y2021_manual"
+}

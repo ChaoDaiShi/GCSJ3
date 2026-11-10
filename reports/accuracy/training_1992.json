@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "year": 1992,
+  "num_training_groups": 31,
+  "num_training_pixels": 5932,
+  "pixels_per_class": {
+    "1": 895,
+    "2": 878,
+    "3": 3906,
+    "4": 253
+  },
+  "groups_per_class": {
+    "1": 8,
+    "2": 9,
+    "3": 9,
+    "4": 5
+  },
+  "feature_names": [
+    "blue",
+    "green",
+    "red",
+    "nir",
+    "swir1",
+    "swir2",
+    "ndvi",
+    "savi",
+    "mndwi",
+    "ndbi",
+    "ui",
+    "bsi",
+    "ibi",
+    "nir_mean",
+    "nir_std",
+    "red_mean",
+    "red_std",
+    "swir1_mean",
+    "swir1_std"
+  ],
+  "model_parameters": {
+    "algorithm": "random_forest",
+    "n_estimators": 300,
+    "min_samples_leaf": 2,
+    "max_features": "sqrt",
+    "class_weight": "balanced_subsample",
+    "n_jobs": -1,
+    "random_state": 42
+  },
+  "split_sha256": "0d4c8f7853ece09038357b6ab2653a19aab737579b9e3ccbd6c17f3be45330c7",
+  "train_csv_sha256": "7862353dcf0993adccc27af75a6d51b678c11ff7addc83eaa752d25e53577076",
+  "train_input_summary": {
+    "train_csv": "E:\\工程实践3\\GCSJ3\\data\\processed\\samples\\1992\\train.csv",
+    "split_json": "E:\\工程实践3\\GCSJ3\\data\\processed\\samples\\1992\\split.json",
+    "features_raster": "data\\processed\\1992\\features_30m.tif",
+    "valid_features_raster": "data\\processed\\1992\\valid_features_30m.tif"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "year": 2021,
+  "product_id": "LC08_L2SP_129039_20210731_20210804_02_T1",
+  "sensor": "LANDSAT_8",
+  "acquisition_date": "2021-07-31",
+  "crs": "EPSG:32648",
+  "bounds": [
+    394950.0,
+    3394140.0,
+    435630.0,
+    3426240.0
+  ],
+  "width": 1356,
+  "height": 1070,
+  "bands": [
+    "blue",
+    "green",
+    "red",
+    "nir",
+    "swir1",
+    "swir2"
+  ],
+  "total_aoi_pixels": 557616,
+  "valid_pixels": 548909,
+  "valid_ratio": 0.984385,
+  "nodata_float": -9999.0,
+  "mask_nodata": 255
+}

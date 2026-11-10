@@ -1,0 +1,109 @@
+{
+  "date": "2026-11-09",
+  "year": 2021,
+  "scene_date": "2021-07-31",
+  "selection_rule": "top8_by_score",
+  "confirmed_by": "user",
+  "confirmation_note": "用户 2026-11-09 选择「就按得分前 8 个」，候选面由 tools/make_urban_candidates.py 按 NDVI/NDBI 判据生成",
+  "replaced_class1": [
+    {
+      "sample_id": "2021_c1_g01_p01",
+      "ndvi_jul": null
+    },
+    {
+      "sample_id": "2021_c1_g02_p01",
+      "ndvi_jul": null
+    },
+    {
+      "sample_id": "2021_c1_g03_p01",
+      "ndvi_jul": null
+    },
+    {
+      "sample_id": "2021_c1_g04_p01",
+      "ndvi_jul": null
+    },
+    {
+      "sample_id": "2021_c1_g05_p01",
+      "ndvi_jul": null
+    },
+    {
+      "sample_id": "2021_c1_g06_p01",
+      "ndvi_jul": null
+    },
+    {
+      "sample_id": "2021_c1_g07_p01",
+      "ndvi_jul": null
+    },
+    {
+      "sample_id": "2021_c1_g08_p01",
+      "ndvi_jul": null
+    }
+  ],
+  "new_class1": [
+    {
+      "sample_id": "2021_c1_g01_p01",
+      "cand_id": "2021_u01",
+      "township": "桂湖街道",
+      "area_ha": 22.86,
+      "ndvi_mean": 0.11,
+      "ndbi_mean": 0.1754
+    },
+    {
+      "sample_id": "2021_c1_g02_p01",
+      "cand_id": "2021_u02",
+      "township": "新都街道",
+      "area_ha": 6.66,
+      "ndvi_mean": 0.0889,
+      "ndbi_mean": 0.0906
+    },
+    {
+      "sample_id": "2021_c1_g03_p01",
+      "cand_id": "2021_u03",
+      "township": "新繁街道",
+      "area_ha": 3.69,
+      "ndvi_mean": 0.1095,
+      "ndbi_mean": 0.1173
+    },
+    {
+      "sample_id": "2021_c1_g04_p01",
+      "cand_id": "2021_u04",
+      "township": "新都街道",
+      "area_ha": 18.09,
+      "ndvi_mean": 0.1501,
+      "ndbi_mean": 0.1247
+    },
+    {
+      "sample_id": "2021_c1_g05_p01",
+      "cand_id": "2021_u05",
+      "township": "石板滩街道",
+      "area_ha": 58.14,
+      "ndvi_mean": 0.1551,
+      "ndbi_mean": 0.0634
+    },
+    {
+      "sample_id": "2021_c1_g06_p01",
+      "cand_id": "2021_u06",
+      "township": "新都街道",
+      "area_ha": 5.31,
+      "ndvi_mean": 0.161,
+      "ndbi_mean": 0.0984
+    },
+    {
+      "sample_id": "2021_c1_g07_p01",
+      "cand_id": "2021_u07",
+      "township": "新繁街道",
+      "area_ha": 103.23,
+      "ndvi_mean": 0.1922,
+      "ndbi_mean": 0.0639
+    },
+    {
+      "sample_id": "2021_c1_g08_p01",
+      "cand_id": "2021_u08",
+      "township": "斑竹园街道",
+      "area_ha": 3.06,
+      "ndvi_mean": 0.1253,
+      "ndbi_mean": 0.0616
+    }
+  ],
+  "overlaps_with_other_classes": []
+}
