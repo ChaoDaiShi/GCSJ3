@@ -213,11 +213,18 @@ def train_classifier(
     else:
         num_groups = 0
 
+    # 像元纯度过滤可能把某些地块组的像元全部剔除，此时存活组数会少于 split.json 记录的划分组数。
+    # 两个数都记下来，避免阅读报告的人误以为划分出错（split.json 只存组数，不存组名单）。
+    num_split_train_groups = int(split_meta_obj.get("train_groups_count", 0))
+    num_dropped_train_groups = max(0, num_split_train_groups - num_groups)
+
     # 组装训练报告元数据
     report_dict: dict[str, Any] = {
         "schema_version": 1,
         "year": int(year),
         "num_training_groups": num_groups,
+        "num_split_training_groups": num_split_train_groups,
+        "num_dropped_train_groups": num_dropped_train_groups,
         "num_training_pixels": int(len(train_df)),
         "pixels_per_class": pixels_per_class,
         "groups_per_class": groups_per_class,

@@ -1033,7 +1033,14 @@ def test_p2_g2_pipeline_b_to_c_to_d_python_api(tmp_path: Path) -> None:
         train_rep = json.load(f)
     assert train_rep["split_sha256"] == split_sha256
     assert train_rep["num_training_pixels"] == len(train_df)
-    assert train_rep["num_training_groups"] == split_meta["train_groups_count"]
+    # 纯度过滤可能整组剔除训练像元，因此存活组数只能小于等于划分组数；
+    # 划分组数另行记录，两者之差即被整组剔除的组数。
+    assert train_rep["num_split_training_groups"] == split_meta["train_groups_count"]
+    assert 0 < train_rep["num_training_groups"] <= split_meta["train_groups_count"]
+    assert (
+        train_rep["num_training_groups"] + train_rep["num_dropped_train_groups"]
+        == train_rep["num_split_training_groups"]
+    )
 
     # 3. Module D: Evaluation & Postprocessing
     eval_data = finalize_evaluate(ctx=ctx, year=year)
