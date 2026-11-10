@@ -18,7 +18,11 @@
 3. pansharpen_2021:
    - 读取 2021 年 Landsat 8 Level-1 数据（RGB 与 Pan 波段）；
    - 根据太阳高度角与定标参数将 DN 转换为大气顶层反射率（TOA Reflectance）；
-   - 采用 Brovey 算法执行 15m 全色锐化融合，生成 pan_rgb_15m.tif，严格标注为仅用于可视化与目视解译。
+   - 采用 Gram-Schmidt 自适应（GSA）算法执行 15m 全色锐化融合，生成 pan_rgb_15m.tif，严格标注为仅用于可视化与目视解译。
+
+4. build_feature_stack:
+   - 基于 6 波段反射率、DEM 与有效性掩膜，生成 21 维特征堆栈（6 波段 + 7 指数 + 6 纹理 + 高程 + 坡度）；
+   - 纹理只统计窗口内有效像元；TWI 需汇流累积量，属分析阶段，不在本步骤计算。
 """
 
 from __future__ import annotations
@@ -48,6 +52,7 @@ from rasterio.enums import Resampling
 from rasterio.features import rasterize
 from rasterio.transform import Affine
 from rasterio.warp import reproject
+from scipy.ndimage import uniform_filter
 from shapely.geometry import box
 
 from rs_urban.contracts import PreparedData, ProjectContext
@@ -808,16 +813,24 @@ def preprocess_year(ctx: ProjectContext, year: int) -> PreparedData:
 # ---------------------------------------------------------------------------
 
 def pansharpen_2021(ctx: ProjectContext) -> Path:
-    """对 2021 年 Landsat 8 Level-1 数据执行 Brovey 全色锐化，生成 15m 真彩色高分影像。
+    """对 2021 年 Landsat 8 Level-1 数据执行 Gram-Schmidt 全色锐化，生成 15m 真彩色高分影像。
 
     注意：本产物仅用于制图背景展示与目视解译参考（radiometry=TOA, purpose=visualization），
     绝不参与土地分类模型的训练与特征输入！
 
-    融合算法：Brovey 变换
-      I = (Red + Green + Blue) / 3
-      Red_sharp   = (Red / I) * Pan
-      Green_sharp = (Green / I) * Pan
-      Blue_sharp  = (Blue / I) * Pan
+    融合算法：Gram-Schmidt 自适应（GSA, Gram-Schmidt Adaptive）
+      设 RGB 三波段（B4/B3/B2）的 TOA 反射率为 MS_i，B8 全色 TOA 反射率为 Pan：
+      1. 用 2×2 块平均把 Pan 降到 30m 得到 Pan_low，同样块平均 MS_i 得到 MS_i_low；
+      2. 最小二乘回归 Pan_low ≈ w0 + Σ w_i·MS_i_low，得到「模拟低分全色」
+         Pan_sim = w0 + Σ w_i·MS_i；
+      3. 细节残差 Δ = Pan - Pan_sim 携带 15m 高频信息；
+      4. 逐波段增益 g_i = cov(MS_i, Pan_sim) / var(Pan_sim)，保持各波段与全色的光谱比例；
+      5. MS_i_sharp = MS_i + g_i·Δ。
+      当 var(Pan_sim) 极小时（例如整幅常数影像）g_i 取 0，输出退化为原多光谱，
+      不注入任何虚构纹理。
+
+      波段范围约束：B8 全色波段为 0.50—0.68 μm，只覆盖 B2/B3/B4。因此本步骤仅融合
+      RGB 三波段；B5（NIR）与 B6/B7（SWIR）不做 15m 光谱外推，分类仍使用 30m 全波段。
 
     Args:
         ctx (ProjectContext): 项目运行上下文。
@@ -940,24 +953,79 @@ def pansharpen_2021(ctx: ProjectContext) -> Path:
         resampling=Resampling.bilinear,
     )
 
-    # 执行 Brovey 锐化融合算法
+    # 执行 Gram-Schmidt 自适应（GSA）全色锐化融合
     r_15, g_15, b_15 = reprojected_rgb_15m[0], reprojected_rgb_15m[1], reprojected_rgb_15m[2]
+    ms_15 = np.stack([r_15, g_15, b_15], axis=0)
 
-    # 确定有效像元掩膜（各波段均有数据且光强 > 1e-6）
+    # 确定有效像元掩膜（各波段均有数据且为有限值）
     valid_mask = (
         (r_15 != nodata_float) & (g_15 != nodata_float) & (b_15 != nodata_float) & (pan_15m != nodata_float)
-        & (~np.isnan(r_15)) & (~np.isnan(g_15)) & (~np.isnan(b_15)) & (~np.isnan(pan_15m))
+        & np.isfinite(r_15) & np.isfinite(g_15) & np.isfinite(b_15) & np.isfinite(pan_15m)
     )
 
-    intensity = (r_15 + g_15 + b_15) / 3.0
-    valid_mask = valid_mask & (intensity > 1e-6)
+    def block_mean_2x(arr: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """将 15m 栅格按 2×2 块平均降到 30m，只统计掩膜内像元。
 
-    # 融合红、绿、蓝三个通道
-    r_sharp = np.where(valid_mask, (r_15 / intensity) * pan_15m, nodata_float).astype(np.float32)
-    g_sharp = np.where(valid_mask, (g_15 / intensity) * pan_15m, nodata_float).astype(np.float32)
-    b_sharp = np.where(valid_mask, (b_15 / intensity) * pan_15m, nodata_float).astype(np.float32)
+        Returns:
+            tuple[np.ndarray, np.ndarray]: 降采样结果，以及该像元是否至少有 1 个有效子像元。
+        """
+        h2, w2 = arr.shape[0] // 2, arr.shape[1] // 2
+        blocks = arr[: h2 * 2, : w2 * 2].reshape(h2, 2, w2, 2)
+        mblocks = mask[: h2 * 2, : w2 * 2].reshape(h2, 2, w2, 2).astype(np.float32)
+        num = np.where(mblocks > 0, blocks, 0.0).sum(axis=(1, 3))
+        den = mblocks.sum(axis=(1, 3))
+        out = np.zeros((h2, w2), dtype=np.float64)
+        ok = den > 0
+        out[ok] = num[ok] / den[ok]
+        return out, ok
 
-    stack_15m = np.stack([r_sharp, g_sharp, b_sharp], axis=0)
+    # 1. 模拟低分全色：把 Pan 与各 MS 波段块平均到 30m
+    pan_low, pan_low_ok = block_mean_2x(pan_15m.astype(np.float64), valid_mask)
+    ms_low = np.stack(
+        [block_mean_2x(ms_15[i].astype(np.float64), valid_mask)[0] for i in range(3)], axis=0
+    )
+
+    # 2. 最小二乘回归 Pan_low ≈ w0 + Σ w_i·MS_i_low
+    reg_ok = pan_low_ok.copy()
+    for i in range(3):
+        reg_ok &= np.isfinite(ms_low[i])
+
+    if int(reg_ok.sum()) < 4:
+        raise ValueError(
+            f"Insufficient valid pixels for Gram-Schmidt regression: {int(reg_ok.sum())} < 4"
+        )
+
+    design = np.stack(
+        [np.ones(int(reg_ok.sum()), dtype=np.float64)] + [ms_low[i][reg_ok] for i in range(3)],
+        axis=1,
+    )
+    coef, _residuals, _rank, _sv = np.linalg.lstsq(design, pan_low[reg_ok], rcond=None)
+    gs_intercept = float(coef[0])
+    gs_weights = [float(v) for v in coef[1:]]
+
+    # 3. 在 15m 网格上重建模拟全色，残差即待注入的高频细节
+    pan_sim = gs_intercept + sum(gs_weights[i] * ms_15[i] for i in range(3))
+    delta = pan_15m - pan_sim
+
+    # 4. 逐波段增益 g_i = cov(MS_i, Pan_sim) / var(Pan_sim)
+    fit_mask = valid_mask & np.isfinite(pan_sim) & np.isfinite(delta)
+    if not fit_mask.any():
+        raise ValueError("No valid pixel available for Gram-Schmidt gain estimation")
+
+    pan_sel = pan_sim[fit_mask].astype(np.float64)
+    mean_pan = float(pan_sel.mean())
+    var_pan = float(pan_sel.var())
+    gs_gains: list[float] = []
+    for i in range(3):
+        band = ms_15[i][fit_mask].astype(np.float64)
+        cov = float(np.mean((band - band.mean()) * (pan_sel - mean_pan)))
+        gs_gains.append(cov / var_pan if var_pan > 1e-12 else 0.0)
+
+    # 5. 注入高频细节；var(Pan_sim) 过小时增益为 0，输出退化为原多光谱
+    stack_15m = np.stack(
+        [np.where(fit_mask, ms_15[i] + gs_gains[i] * delta, nodata_float) for i in range(3)],
+        axis=0,
+    ).astype(np.float32)
 
     # 保存 15m 融合栅格
     out_dir = ctx.data / "processed" / "2021"
@@ -993,6 +1061,7 @@ def pansharpen_2021(ctx: ProjectContext) -> Path:
     report_data = {
         "radiometry": "TOA",
         "purpose": "visualization",
+        "fusion_algorithm": "Gram-Schmidt (GSA)",
         "product_id": selected_l1["product_id"],
         "sun_elevation_deg": sun_elev,
         "resolution": 15,
@@ -1001,7 +1070,473 @@ def pansharpen_2021(ctx: ProjectContext) -> Path:
         "rgb_bands": rgb_band_nums,
         "pan_band": pan_band_num,
         "nodata_val": nodata_float,
+        "gs_intercept": gs_intercept,
+        "gs_weights": gs_weights,
+        "gs_gains": gs_gains,
+        "valid_pixels": int(fit_mask.sum()),
+        "band_scope_note": "B8(0.50-0.68um) 仅覆盖 B2/B3/B4；NIR 与 SWIR 未做 15m 外推",
     }
     (rep_dir / "pansharpen_2021.json").write_text(json.dumps(report_data, indent=2), encoding="utf-8")
 
     return out_pan_path
+
+
+# ---------------------------------------------------------------------------
+# 7. 步骤实现：21 维特征堆栈（build_feature_stack）
+# ---------------------------------------------------------------------------
+
+# 默认特征顺序：6 个反射率波段 + 7 项光谱指数 + 6 项局部纹理 + 高程 + 坡度 + TWI = 22 维
+DEFAULT_FEATURE_STACK_ORDER: list[str] = [
+    "blue", "green", "red", "nir", "swir1", "swir2",
+    "ndvi", "savi", "mndwi", "ndbi", "ui", "bsi", "ibi",
+    "nir_mean", "nir_std", "red_mean", "red_std", "swir1_mean", "swir1_std",
+    "elevation", "slope", "twi",
+]
+
+# 供报告与复核使用的公式清单（写入 sidecar JSON，避免文档与实现脱节）
+FEATURE_FORMULAS: dict[str, str] = {
+    "ndvi": "(nir - red) / (nir + red)",
+    "savi": "1.5 * (nir - red) / (nir + red + 0.5)",
+    "mndwi": "(green - swir1) / (green + swir1)",
+    "ndbi": "(swir1 - nir) / (swir1 + nir)",
+    "ui": "(swir2 - nir) / (swir2 + nir)",
+    "bsi": "((swir1 + red) - (nir + blue)) / ((swir1 + red) + (nir + blue))",
+    "ibi": "(Tb - Tv) / (Tb + Tv), Tb = 2*swir1/(swir1+nir), Tv = nir/(nir+red) + green/(green+swir1)",
+    "texture": "窗口内有效像元均值与标准差（uniform_filter，默认 5×5）",
+    "elevation": "DEM 双线性重投影至 30m 网格（米）",
+    "slope": "arctan(hypot(dz/dx, dz/dy))，单位：度",
+    "twi": "ln(a / tanβ)，a = 汇流累积量×30m，tanβ 取下限 1e-3",
+}
+
+
+# ---------------------------------------------------------------------------
+# 7.1 TWI（地形湿度指数）所需的 DEM 水文辅助函数
+# ---------------------------------------------------------------------------
+
+_D8_NEIGHBORS: list[tuple[int, int, float]] = [
+    (-1, -1, math.sqrt(2.0)), (-1, 0, 1.0), (-1, 1, math.sqrt(2.0)),
+    (0, -1, 1.0), (0, 1, 1.0),
+    (1, -1, math.sqrt(2.0)), (1, 0, 1.0), (1, 1, math.sqrt(2.0)),
+]
+
+
+def _smooth_dem(dem: np.ndarray, valid: np.ndarray, window: int, nodata: float) -> np.ndarray:
+    """对 DEM 做有效像元均值平滑，抑制 ASTER GDEM 在 30m 尺度的噪声。"""
+    if window <= 1:
+        return dem
+    weight = valid.astype(np.float32)
+    filled = np.where(valid, dem, 0.0).astype(np.float32)
+    wsum = uniform_filter(weight, size=window, mode="nearest")
+    dsum = uniform_filter(filled, size=window, mode="nearest")
+    with np.errstate(divide="ignore", invalid="ignore"):
+        out = np.where(valid & (wsum > 0), dsum / np.maximum(wsum, 1e-6), nodata).astype(np.float32)
+    return out
+
+
+def _fill_depressions(dem: np.ndarray, valid: np.ndarray, eps: float = 1e-4) -> np.ndarray:
+    """Priority-Flood 填洼（Barnes et al., 2014），保证每个内陆像元都有严格下坡邻域。
+
+    Args:
+        dem (np.ndarray): 高程矩阵 (H, W)，无效像元可为任意值。
+        valid (np.ndarray): 有效像元掩膜 (H, W)。
+        eps (float): 抬升步长（米），用于打破平坦面。
+
+    Returns:
+        np.ndarray: 填洼后的 float64 高程矩阵。
+    """
+    import heapq
+
+    hgt, wid = dem.shape
+    filled = np.where(valid, dem, np.nan).astype(np.float64)
+    closed = ~valid
+    heap: list[tuple[float, int, int]] = []
+
+    def push(i: int, j: int) -> None:
+        closed[i, j] = True
+        heapq.heappush(heap, (float(filled[i, j]), i, j))
+
+    for i in range(hgt):
+        for j in (0, wid - 1):
+            if not closed[i, j]:
+                push(i, j)
+    for j in range(wid):
+        for i in (0, hgt - 1):
+            if not closed[i, j]:
+                push(i, j)
+
+    while heap:
+        z, i, j = heapq.heappop(heap)
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                if di == 0 and dj == 0:
+                    continue
+                ni, nj = i + di, j + dj
+                if 0 <= ni < hgt and 0 <= nj < wid and not closed[ni, nj]:
+                    closed[ni, nj] = True
+                    zn = filled[ni, nj]
+                    if zn <= z:
+                        zn = z + eps
+                        filled[ni, nj] = zn
+                    heapq.heappush(heap, (float(zn), ni, nj))
+
+    return filled
+
+
+def _d8_downstream(filled: np.ndarray, valid: np.ndarray) -> np.ndarray:
+    """按最陡下降法确定每个像元的下游像元（平坦索引，-1 表示无下游）。"""
+    hgt, wid = filled.shape
+    best = np.full((hgt, wid), -1, dtype=np.int64)
+    best_slope = np.zeros((hgt, wid), dtype=np.float64)
+    rows, cols = np.indices((hgt, wid))
+
+    for di, dj, dist in _D8_NEIGHBORS:
+        nr, nc = rows + di, cols + dj
+        inside = (nr >= 0) & (nr < hgt) & (nc >= 0) & (nc < wid)
+        nb = np.full((hgt, wid), np.nan, dtype=np.float64)
+        nb[inside] = filled[nr[inside], nc[inside]]
+        slope = (filled - nb) / dist
+        better = valid & inside & np.isfinite(nb) & (slope > best_slope)
+        best_slope = np.where(better, slope, best_slope)
+        best = np.where(better, nr * wid + nc, best)
+
+    return best
+
+
+def _flow_accumulation(downstream: np.ndarray, filled: np.ndarray, valid: np.ndarray) -> np.ndarray:
+    """按高程从高到低累加上游像元数（D8 单流向）。"""
+    hgt, wid = filled.shape
+    flat_valid = np.flatnonzero(valid.ravel())
+    order = flat_valid[np.argsort(-filled.ravel()[flat_valid], kind="stable")]
+
+    acc = np.where(valid.ravel(), 1.0, 0.0).tolist()
+    ds = downstream.ravel().tolist()
+    for cell in order.tolist():
+        target = ds[cell]
+        if target >= 0:
+            acc[target] += acc[cell]
+
+    return np.asarray(acc, dtype=np.float64).reshape(hgt, wid)
+
+
+def _compute_twi(
+    dem: np.ndarray,
+    valid: np.ndarray,
+    cell_size: float,
+    nodata: float,
+) -> np.ndarray:
+    """计算地形湿度指数 TWI = ln(a / tanβ)。
+
+    Args:
+        dem (np.ndarray): 已平滑的高程矩阵（米）。
+        valid (np.ndarray): 有效像元掩膜。
+        cell_size (float): 像元边长（米）。
+        nodata (float): 无效填充值。
+
+    Returns:
+        np.ndarray: TWI 矩阵，无效像元为 nodata。
+    """
+    if not valid.any():
+        raise ValueError("No valid DEM pixel available for TWI computation")
+
+    filled = _fill_depressions(dem, valid)
+    downstream = _d8_downstream(filled, valid)
+    accumulation = _flow_accumulation(downstream, filled, valid)
+
+    safe_dem = np.where(valid, dem, np.nan)
+    grad_y, grad_x = np.gradient(safe_dem, cell_size, cell_size)
+    slope_rad = np.arctan(np.hypot(grad_x, grad_y))
+    tan_beta = np.maximum(np.tan(np.where(np.isfinite(slope_rad), slope_rad, 0.0)), 1e-3)
+
+    specific_area = accumulation * cell_size  # 单位面积 m²/m
+    with np.errstate(divide="ignore", invalid="ignore"):
+        twi = np.log(specific_area / tan_beta)
+
+    return np.where(valid & np.isfinite(twi), twi, nodata).astype(np.float32)
+
+
+def _compute_terrain_arrays(
+    dem_path: Path,
+    dst_transform,
+    dst_crs,
+    height: int,
+    width: int,
+    float_nodata: float,
+    dem_smooth_window: int,
+    twi_buffer_cells: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """计算高程、坡度与 TWI 三项地形特征。
+
+    TWI 在向外扩 ``twi_buffer_cells`` 的窗口上做填洼 + D8 汇流后再裁回主网格，
+    以减少研究区边界处的汇水缺失。
+
+    Returns:
+        tuple: (dem, slope, twi, dem_valid)
+    """
+    res_x = abs(dst_transform.a)
+    res_y = abs(dst_transform.e)
+
+    dem = np.full((height, width), float_nodata, dtype=np.float32)
+    with rasterio.open(dem_path) as ds:
+        reproject(
+            source=ds.read(1).astype(np.float32),
+            destination=dem,
+            src_transform=ds.transform,
+            src_crs=ds.crs,
+            src_nodata=ds.nodata,
+            dst_transform=dst_transform,
+            dst_crs=dst_crs,
+            dst_nodata=float_nodata,
+            resampling=Resampling.bilinear,
+        )
+    dem_valid = np.isfinite(dem) & (dem != float_nodata)
+
+    dem = _smooth_dem(dem, dem_valid, dem_smooth_window, float_nodata)
+
+    grad_y, grad_x = np.gradient(np.where(dem_valid, dem, np.nan), res_y, res_x)
+    slope = np.degrees(np.arctan(np.hypot(grad_x, grad_y))).astype(np.float32)
+    slope = np.where(dem_valid, slope, float_nodata).astype(np.float32)
+
+    pad_transform = dst_transform @ Affine.translation(-twi_buffer_cells, -twi_buffer_cells)
+    pad_h = height + 2 * twi_buffer_cells
+    pad_w = width + 2 * twi_buffer_cells
+    dem_pad = np.full((pad_h, pad_w), float_nodata, dtype=np.float32)
+    with rasterio.open(dem_path) as ds:
+        reproject(
+            source=ds.read(1).astype(np.float32),
+            destination=dem_pad,
+            src_transform=ds.transform,
+            src_crs=ds.crs,
+            src_nodata=ds.nodata,
+            dst_transform=pad_transform,
+            dst_crs=dst_crs,
+            dst_nodata=float_nodata,
+            resampling=Resampling.bilinear,
+        )
+    dem_pad_valid = np.isfinite(dem_pad) & (dem_pad != float_nodata)
+    dem_pad = _smooth_dem(dem_pad, dem_pad_valid, dem_smooth_window, float_nodata)
+    twi_pad = _compute_twi(dem_pad, dem_pad_valid, res_x, float_nodata)
+    twi = twi_pad[
+        twi_buffer_cells : twi_buffer_cells + height,
+        twi_buffer_cells : twi_buffer_cells + width,
+    ].copy()
+    twi = np.where(
+        dem_valid & np.isfinite(twi) & (twi != float_nodata), twi, float_nodata
+    ).astype(np.float32)
+    return dem, slope, twi, dem_valid
+
+
+
+def build_feature_stack(
+    ctx: ProjectContext,
+    year: int,
+    order: list[str] | None = None,
+    out_stack: Path | None = None,
+    out_valid: Path | None = None,
+) -> Path:
+    """构建指定年份的 21 维特征堆栈，供分类组直接取用。
+
+    特征构成（顺序由配置 `[feature_stack].order` 决定，默认 21 维）：
+      1. 6 个地表反射率波段：blue / green / red / nir / swir1 / swir2；
+      2. 7 项光谱指数：NDVI、SAVI、MNDWI、NDBI、UI、BSI、IBI；
+      3. 6 项局部纹理：NIR / Red / SWIR1 在 5×5 窗口内的均值与标准差；
+      4. 2 项地形：DEM 高程（米）与坡度（度）。
+
+    科学口径：
+      - 反射率与指数沿用 `samples.calculate_indices()` 的公式与 NoData 规则，本模块只做扩展，
+        两处公式一致性由 `tests/unit/test_preprocess.py` 的对照用例守护；
+      - 纹理统计只统计有效像元（以 uniform_filter 求有效像元加权均值与方差），
+        不会把 -9999 的无效值混入邻域平均；
+      - 全部波段统一使用 valid_sr_30m.tif 的像元有效性，任一输入无效则该像元所有特征置 NoData；
+      - TWI（地形湿度指数）不在本步骤计算：它需要汇流累积量，属于水文分析，由分析阶段负责。
+
+    Args:
+        ctx (ProjectContext): 项目运行上下文。
+        year (int): 年份，需已存在 processed/<year>/sr_30m.tif。
+
+    Returns:
+        Path: 特征堆栈路径 data/processed/features/feat_<year>_30m.tif。
+
+    Raises:
+        FileNotFoundError: 反射率、有效性掩膜、DEM 或网格文件缺失。
+        ValueError: 配置的特征名单与可计算特征不匹配。
+    """
+    sr_path = ctx.data / "processed" / str(year) / "sr_30m.tif"
+    valid_path = ctx.data / "processed" / str(year) / "valid_sr_30m.tif"
+    if not sr_path.exists():
+        raise FileNotFoundError(f"Surface reflectance raster not found: {sr_path}")
+    if not valid_path.exists():
+        raise FileNotFoundError(f"Valid surface reflectance mask not found: {valid_path}")
+
+    fs_cfg = ctx.config.get("feature_stack", {})
+    if order is None:
+        order = list(fs_cfg.get("order", DEFAULT_FEATURE_STACK_ORDER))
+    order = list(order)
+    # 只有请求地形特征时才需要 DEM；只用波段/指数/纹理时（如小样本单测）不强制 DEM
+    needs_terrain = any(n in ("elevation", "slope", "twi") for n in order)
+    texture_window = int(fs_cfg.get("texture_window", 5))
+    dem_rel = fs_cfg.get("dem_path")
+    if needs_terrain and not dem_rel:
+        raise FileNotFoundError("feature_stack.dem_path is not configured in project.toml")
+
+    dem_path = None
+    if needs_terrain:
+        dem_path = Path(dem_rel)
+        if not dem_path.is_absolute():
+            dem_path = ctx.data / (dem_rel.replace("data/", "", 1) if dem_rel.startswith("data/") else dem_rel)
+        if not dem_path.exists():
+            raise FileNotFoundError(f"DEM raster not found: {dem_path}")
+
+    float_nodata = float(ctx.config.get("float_nodata", -9999.0))
+    eps = 1e-6
+
+    with rasterio.open(sr_path) as src:
+        sr = src.read().astype(np.float32)
+        height, width = src.height, src.width
+        profile = src.profile.copy()
+        dst_transform = src.transform
+        dst_crs = src.crs
+
+    with rasterio.open(valid_path) as src:
+        valid_sr = src.read(1)
+
+    is_valid = valid_sr == 1
+    for b in range(sr.shape[0]):
+        is_valid &= np.isfinite(sr[b]) & (sr[b] != float_nodata)
+
+    blue, green, red, nir, swir1, swir2 = (sr[i] for i in range(6))
+
+    def ratio(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
+        """按有效掩膜计算比值，分母过小或无效时置 NoData。"""
+        safe = is_valid & (np.abs(denominator) > eps)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.where(safe, numerator / denominator, float_nodata).astype(np.float32)
+
+    t_b = ratio(2.0 * swir1, swir1 + nir)
+    t_v_raw = ratio(nir, nir + red) + ratio(green, green + swir1)
+    t_v_raw = np.where(is_valid, t_v_raw, float_nodata).astype(np.float32)
+
+    indices: dict[str, np.ndarray] = {
+        "ndvi": ratio(nir - red, nir + red),
+        "savi": ratio(1.5 * (nir - red), nir + red + 0.5),
+        "mndwi": ratio(green - swir1, green + swir1),
+        "ndbi": ratio(swir1 - nir, swir1 + nir),
+        "ui": ratio(swir2 - nir, swir2 + nir),
+        "bsi": ratio((swir1 + red) - (nir + blue), (swir1 + red) + (nir + blue)),
+        "ibi": ratio(t_b - t_v_raw, t_b + t_v_raw),
+    }
+
+    def texture_stats(band: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """计算窗口内有效像元的局部均值与标准差。"""
+        weight = is_valid.astype(np.float32)
+        filled = np.where(is_valid, band, 0.0).astype(np.float32)
+        wsum = uniform_filter(weight, size=texture_window, mode="nearest")
+        bsum = uniform_filter(filled, size=texture_window, mode="nearest")
+        bsq = uniform_filter(filled * filled, size=texture_window, mode="nearest")
+        with np.errstate(divide="ignore", invalid="ignore"):
+            mean = np.where(wsum > 0, bsum / wsum, float_nodata)
+            var = np.where(wsum > 0, bsq / wsum - mean * mean, float_nodata)
+        std = np.sqrt(np.clip(np.where(np.isfinite(var), var, 0.0), 0.0, None))
+        mean = np.where(is_valid, mean, float_nodata).astype(np.float32)
+        std = np.where(is_valid, std, float_nodata).astype(np.float32)
+        return mean, std
+
+    texture: dict[str, np.ndarray] = {}
+    for band_name, band_arr in (("nir", nir), ("red", red), ("swir1", swir1)):
+        mean_arr, std_arr = texture_stats(band_arr)
+        texture[f"{band_name}_mean"] = mean_arr
+        texture[f"{band_name}_std"] = std_arr
+
+    # DEM：主网格用于高程与坡度；带缓冲窗口用于 TWI 汇流（缓冲可减少边界汇水缺失）
+    dem_smooth_window = int(fs_cfg.get("dem_smooth_window", 5))
+    twi_buffer_cells = int(fs_cfg.get("twi_buffer_cells", 67))
+    res_x = abs(dst_transform.a)
+    res_y = abs(dst_transform.e)
+
+    dem = slope = twi = None
+    if needs_terrain:
+        dem, slope, twi, dem_valid = _compute_terrain_arrays(
+            dem_path=dem_path,
+            dst_transform=dst_transform,
+            dst_crs=dst_crs,
+            height=height,
+            width=width,
+            float_nodata=float_nodata,
+            dem_smooth_window=dem_smooth_window,
+            twi_buffer_cells=twi_buffer_cells,
+        )
+        is_valid = is_valid & dem_valid
+
+    values: dict[str, np.ndarray] = {
+        "blue": blue, "green": green, "red": red, "nir": nir, "swir1": swir1, "swir2": swir2,
+        **indices, **texture,
+    }
+    if needs_terrain:
+        values.update({"elevation": dem, "slope": slope, "twi": twi})
+
+    unknown = [name for name in order if name not in values]
+    if unknown:
+        raise ValueError(f"Unknown feature names in feature_stack.order: {unknown}")
+
+    stack = np.stack(
+        [np.where(is_valid, values[name], float_nodata) for name in order], axis=0
+    ).astype(np.float32)
+
+    if out_stack is not None:
+        out_path = Path(out_stack)
+    else:
+        out_dir = ctx.data / "processed" / "features"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"feat_{year}_30m.tif"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    profile.update(count=len(order), dtype="float32", nodata=float_nodata)
+    with rasterio.open(out_path, "w", **profile) as dst:
+        dst.write(stack)
+        for idx, name in enumerate(order, start=1):
+            dst.set_band_description(idx, name)
+
+    # 可选：同时写出 uint8 有效特征掩膜（1=有效，0=无效）
+    if out_valid is not None:
+        valid_profile = profile.copy()
+        valid_profile.update(count=1, dtype="uint8", nodata=255)
+        Path(out_valid).parent.mkdir(parents=True, exist_ok=True)
+        with rasterio.open(out_valid, "w", **valid_profile) as dst_v:
+            dst_v.write(is_valid.astype(np.uint8), 1)
+
+    # 发布副本，供分类/制图直接取用（仅在写规范路径时执行，避免重复拷贝）
+    if out_stack is None:
+        out_raster_dir = ctx.outputs / "rasters"
+        out_raster_dir.mkdir(parents=True, exist_ok=True)
+        pub_path = out_raster_dir / f"xindu_{year}_features_30m.tif"
+        shutil.copy2(out_path, pub_path)
+
+    rep_dir = ctx.reports / "data"
+    rep_dir.mkdir(parents=True, exist_ok=True)
+    report_data = {
+        "year": int(year),
+        "feature_count": len(order),
+        "feature_order": order,
+        "texture_window": texture_window,
+        "dem_smooth_window": dem_smooth_window,
+        "dem_path": str(dem_rel),
+        "formulas": FEATURE_FORMULAS,
+        "valid_pixels": int(is_valid.sum()),
+        "nodata_val": float_nodata,
+        "width": int(width),
+        "height": int(height),
+        "crs": str(dst_crs),
+        "slope_deg_p50": (
+            float(np.median(slope[is_valid])) if needs_terrain and is_valid.any() else None
+        ),
+        "elevation_m_p50": (
+            float(np.median(dem[is_valid])) if needs_terrain and is_valid.any() else None
+        ),
+        "twi_p50": float(np.median(twi[is_valid])) if needs_terrain and is_valid.any() else None,
+        "twi_buffer_cells": twi_buffer_cells,
+        "twi_note": "Priority-Flood 填洼 + D8 单流向汇流；缓冲 2km 后按主网格裁切",
+    }
+    (rep_dir / f"features_{year}.json").write_text(
+        json.dumps(report_data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+    return out_path

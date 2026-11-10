@@ -16,7 +16,7 @@ CONFIG_FILE = REPO_ROOT / "configs" / "project.toml"
 def test_qml_files_exist_and_parse():
     """Verifies all expected QML files exist and parse as valid XML."""
     expected_qmls = [
-        "lulc_5class.qml",
+        "lulc_4class.qml",
         "change_4class.qml",
         "townships.qml",
         "township_intensity.qml",
@@ -30,15 +30,15 @@ def test_qml_files_exist_and_parse():
         assert root.tag == "qgis", f"Invalid QGIS root tag in {qml_name}"
 
 
-def test_lulc_5class_palette_matches_config():
-    """Verifies 5-class LULC palette strictly matches configs/project.toml."""
+def test_lulc_4class_palette_matches_config():
+    """Verifies 4-class LULC palette strictly matches configs/project.toml."""
     with open(CONFIG_FILE, "rb") as f:
         cfg = tomllib.load(f)
 
     expected_classes = {c["code"]: c for c in cfg["classes"]}
-    assert len(expected_classes) == 5
+    assert len(expected_classes) == 4
 
-    qml_path = STYLES_DIR / "lulc_5class.qml"
+    qml_path = STYLES_DIR / "lulc_4class.qml"
     tree = ET.parse(qml_path)
     root = tree.getroot()
 
@@ -55,7 +55,7 @@ def test_lulc_5class_palette_matches_config():
     assert 0 in found_palette
     assert found_palette[0]["alpha"] == 0 or found_palette[0]["label"] == "NoData"
 
-    # Verify classes 1 to 5
+    # Verify classes 1 to 4
     for code, expected in expected_classes.items():
         assert code in found_palette, f"Class {code} missing from QML palette"
         assert found_palette[code]["label"] == expected["name"]

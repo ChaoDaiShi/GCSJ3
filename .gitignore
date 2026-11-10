@@ -50,3 +50,6 @@ htmlcov/
 Thumbs.db
 Desktop.ini
 *.log
+
+# QGIS local symbology database
+/symbology-style.db

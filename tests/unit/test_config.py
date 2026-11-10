@@ -44,21 +44,27 @@ def test_process_env_override(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, r
 
 
 def test_config_classes_and_features_consistency():
-    """Verify that the 5 classes and 10 features order are fully consistent with project.toml."""
+    """Verify that the 4 classes and 10 features order are fully consistent with project.toml."""
     ctx = load_context(Path("configs/project.toml"), Path(".env"))
     config = ctx.config
 
-    # Check 5 classes
+    # Check 4 classes
     classes = config["classes"]
-    assert len(classes) == 5
-    expected_codes = [1, 2, 3, 4, 5]
-    expected_names = ["建设用地", "耕地", "其他植被", "水域", "裸地"]
+    assert len(classes) == 4
+    expected_codes = [1, 2, 3, 4]
+    expected_names = ["城镇及建设用地", "耕地", "林草植被", "水体"]
     assert [c["code"] for c in classes] == expected_codes
     assert [c["name"] for c in classes] == expected_names
 
-    # Check 10 features order
-    expected_features = ["blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"]
+    # Check 19 features order：22 维方案去掉地形三项（空间位置代理，见 docs/changes/2026-11-09-feature-19dim-22dim-comparison.md）
+    expected_features = [
+        "blue", "green", "red", "nir", "swir1", "swir2",
+        "ndvi", "savi", "mndwi", "ndbi", "ui", "bsi", "ibi",
+        "nir_mean", "nir_std", "red_mean", "red_std", "swir1_mean", "swir1_std",
+    ]
     assert config["features"]["order"] == expected_features
+    assert config["feature_stack"]["order"] == expected_features
+    assert config["feature_stack"]["texture_window"] == 5
 
     # Check key scientific parameters
     assert config["target_crs"] == "EPSG:32648"
@@ -94,16 +100,16 @@ def test_micro_fixtures(
 
     # Grouped samples fixture
     samples = grouped_samples_fixture["data"]
-    assert samples["num_classes"] == 5
+    assert samples["num_classes"] == 4
     assert samples["groups_per_class"] == 8
-    assert samples["total_samples"] == 120
+    assert samples["total_samples"] == 96
     assert Path(grouped_samples_fixture["csv_path"]).exists()
 
     # Metric fixture
     metric = metric_fixture["data"]
     assert metric["overall_accuracy"] == 0.8
-    assert len(metric["confusion_matrix"]) == 5
-    assert len(metric["class_metrics"]) == 5
+    assert len(metric["confusion_matrix"]) == 4
+    assert len(metric["class_metrics"]) == 4
 
     # Change fixture
     change = change_fixture["data"]

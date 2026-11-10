@@ -1,7 +1,7 @@
 """Unit tests for P1-D: post-processing (sieve), vectorization, and independent accuracy evaluation.
 
 Verifies:
-1. metric_fixture verification: 5x5 confusion matrix and OA=0.8 calculation.
+1. metric_fixture verification: 4x4 confusion matrix and OA=0.8 calculation.
 2. Threshold verification: OA strictly greater than 0.75 (0.75 itself fails).
 3. Sieve filtering: isolated pixels (< 4 pixels) merged into surrounding class while
    retaining NoData (0) boundaries.
@@ -52,7 +52,7 @@ from rs_urban.evaluate import (
 
 
 # ---------------------------------------------------------------------------
-# Test 1: metric_fixture verification (5x5 matrix & OA=0.8)
+# Test 1: metric_fixture verification (4x4 matrix & OA=0.8)
 # ---------------------------------------------------------------------------
 
 def test_metric_fixture_evaluation(metric_fixture: dict):
@@ -62,7 +62,7 @@ def test_metric_fixture_evaluation(metric_fixture: dict):
     y_pred = data["y_pred"]
     expected_oa = data["overall_accuracy"]
     expected_matrix = data["confusion_matrix"]
-    class_order = [1, 2, 3, 4, 5]
+    class_order = [1, 2, 3, 4]
 
     matrix, oa = calculate_confusion_matrix(y_true, y_pred, class_order=class_order)
     assert oa == expected_oa
@@ -207,15 +207,14 @@ def test_export_tables_and_reports(tmp_path: Path):
     tables_dir.mkdir(parents=True, exist_ok=True)
 
     matrix = [
-        [10, 2, 0, 0, 0],
-        [1, 15, 0, 0, 0],
-        [0, 0, 8, 1, 0],
-        [0, 0, 0, 5, 0],
-        [0, 0, 0, 0, 4],
+        [10, 2, 0, 0],
+        [1, 15, 0, 0],
+        [0, 0, 8, 1],
+        [0, 0, 0, 9],
     ]
-    class_order = [1, 2, 3, 4, 5]
+    class_order = [1, 2, 3, 4]
     class_metrics = calculate_class_metrics(matrix, class_order)
-    oa = sum(matrix[i][i] for i in range(5)) / sum(sum(r) for r in matrix)
+    oa = sum(matrix[i][i] for i in range(4)) / sum(sum(r) for r in matrix)
 
     # 1. Confusion matrix CSV
     conf_csv = tables_dir / "confusion_2021_final.csv"
@@ -223,8 +222,8 @@ def test_export_tables_and_reports(tmp_path: Path):
     assert conf_csv.exists()
     with open(conf_csv, "r", encoding="utf-8") as f:
         reader = list(csv.reader(f))
-        assert reader[0] == ["true_class", "pred_1", "pred_2", "pred_3", "pred_4", "pred_5"]
-        assert len(reader) == 6
+        assert reader[0] == ["true_class", "pred_1", "pred_2", "pred_3", "pred_4"]
+        assert len(reader) == 5
 
     # 2. Metrics CSV
     metrics_csv = tables_dir / "metrics_2021_final.csv"
@@ -233,7 +232,7 @@ def test_export_tables_and_reports(tmp_path: Path):
     with open(metrics_csv, "r", encoding="utf-8") as f:
         reader = list(csv.reader(f))
         assert reader[0] == ["class_id", "precision", "recall", "f1", "support"]
-        assert len(reader) == 6
+        assert len(reader) == 5
 
     # 3. Reports
     json_path = reports_dir / "evaluation_2021.json"

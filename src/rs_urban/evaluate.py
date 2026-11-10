@@ -11,7 +11,7 @@
    - 计算各图斑面积（平方公里），导出标准的 ESRI Shapefile 矢量文件集合，并显式生成 UTF-8 的 .cpg 编码定义文件。
 
 3. calculate_confusion_matrix & calculate_class_metrics:
-   - 基于空间完全独立的留出验证集（holdout.csv）生成 5x5 混淆矩阵（建设用地、耕地、其他植被、水域、裸地）；
+   - 基于空间完全独立的留出验证集（holdout.csv）生成 4x4 混淆矩阵（城镇及建设用地、耕地、林草植被、水体）；
    - 计算总体精度（OA）、各类精确率（Precision）、召回率（Recall）与 F1 分数。
 
 4. check_accuracy_threshold:
@@ -58,9 +58,9 @@ from rs_urban.contracts import EvaluationData, ProjectContext
 def calculate_confusion_matrix(
     y_true: list[int] | np.ndarray,
     y_pred: list[int] | np.ndarray,
-    class_order: list[int] = [1, 2, 3, 4, 5],
+    class_order: list[int] = [1, 2, 3, 4],
 ) -> tuple[list[list[int]], float]:
-    """计算 5x5 混淆矩阵与总体分类精度（Overall Accuracy, OA）。
+    """计算 4x4 混淆矩阵与总体分类精度（Overall Accuracy, OA）。
 
     混淆矩阵定义规范：
       - 行（Rows）：地面真实类别（Ground Truth）；
@@ -73,11 +73,11 @@ def calculate_confusion_matrix(
     Args:
         y_true (list[int] | np.ndarray): 真实地类标签序列。
         y_pred (list[int] | np.ndarray): 模型预测地类标签序列。
-        class_order (list[int], optional): 地类编码排列顺序。默认为 [1, 2, 3, 4, 5]。
+        class_order (list[int], optional): 地类编码排列顺序。默认为 [1, 2, 3, 4]。
 
     Returns:
         tuple[list[list[int]], float]:
-            - matrix: 5x5 混淆矩阵（二维嵌套整数列表）；
+            - matrix: 4x4 混淆矩阵（二维嵌套整数列表）；
             - oa: 总体精度浮点数（0.0 至 1.0）。
     """
     n_classes = len(class_order)
@@ -97,7 +97,7 @@ def calculate_confusion_matrix(
 
 def calculate_class_metrics(
     matrix: list[list[int]],
-    class_order: list[int] = [1, 2, 3, 4, 5],
+    class_order: list[int] = [1, 2, 3, 4],
 ) -> list[dict[str, Any]]:
     """根据混淆矩阵计算每个类别的精确率、召回率、F1 分数及样本支持量。
 
@@ -108,7 +108,7 @@ def calculate_class_metrics(
 
     Args:
         matrix (list[list[int]]): 混淆矩阵二维列表。
-        class_order (list[int], optional): 地类编码列表。默认为 [1, 2, 3, 4, 5]。
+        class_order (list[int], optional): 地类编码列表。默认为 [1, 2, 3, 4]。
 
     Returns:
         list[dict[str, Any]]: 包含各类别指标的字典列表。
@@ -294,7 +294,7 @@ def vectorize_and_clip(
 def export_confusion_matrix_csv(
     csv_path: Path,
     matrix: list[list[int]],
-    class_order: list[int] = [1, 2, 3, 4, 5],
+    class_order: list[int] = [1, 2, 3, 4],
 ) -> Path:
     """将混淆矩阵导出为带有标准表头的 CSV 格式表格。
 
@@ -302,8 +302,8 @@ def export_confusion_matrix_csv(
 
     Args:
         csv_path (Path): 导出文件路径。
-        matrix (list[list[int]]): 5x5 混淆矩阵数据。
-        class_order (list[int], optional): 类别排序。默认为 [1, 2, 3, 4, 5]。
+        matrix (list[list[int]]): 4x4 混淆矩阵数据。
+        class_order (list[int], optional): 类别排序。默认为 [1, 2, 3, 4]。
 
     Returns:
         Path: 导出的 CSV 文件路径。
@@ -363,10 +363,12 @@ def generate_evaluation_report(
     total_groups: int,
     oa_threshold: float = 0.75,
     f1_target: float = 0.75,
+    class_order: list[int] | None = None,
+    class_names: dict[int, str] | None = None,
 ) -> None:
     """输出 JSON 与 Markdown 双格式的精度评定分析报告。
 
-    内容涵盖：原始/最终总体精度对比、硬性门槛判定结果、建设用地核心 F1 分数、完整混淆矩阵及各类查准查全指标。
+    内容涵盖：原始/最终总体精度对比、硬性门槛判定结果、城镇及建设用地核心 F1 分数、完整混淆矩阵及各类查准查全指标。
 
     Args:
         json_path (Path): 输出 JSON 报告路径。
@@ -381,8 +383,12 @@ def generate_evaluation_report(
         total_samples (int): 留出验证集样本总像元数。
         total_groups (int): 留出验证集独立地块组数。
         oa_threshold (float, optional): 总体精度准入门槛。默认为 0.75。
-        f1_target (float, optional): 建设用地目标 F1 阈值。默认为 0.75。
+        f1_target (float, optional): 城镇及建设用地目标 F1 阈值。默认为 0.75。
+        class_order (list[int], optional): 类别编码顺序，默认 [1, 2, 3, 4]。
+        class_names (dict[int, str], optional): 类别编码到名称的映射，用于报告表头。
     """
+    order = list(class_order or [1, 2, 3, 4])
+    names = dict(class_names or {})
     json_path.parent.mkdir(parents=True, exist_ok=True)
     md_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -421,18 +427,18 @@ def generate_evaluation_report(
         f"- **原始分类总体精度 Overall Accuracy (OA) (Raw)：** {oa_raw:.4f}",
         f"- **最终分类总体精度 Overall Accuracy (OA) (Final)：** {oa_final:.4f}",
         f"- **硬性准入门槛 (OA > {oa_threshold})：** {'通过 (PASS)' if passed_oa else '未达标 (FAIL)'}",
-        f"- **建设用地 F1 目标 (F1 ≥ {f1_target})：** {built_up_f1:.4f} ({'达标' if passed_f1 else '未达标'})",
+        f"- **城镇及建设用地 F1 目标 (F1 ≥ {f1_target})：** {built_up_f1:.4f} ({'达标' if passed_f1 else '未达标'})",
         "",
         "## 1. 最终分类混淆矩阵 (Final Confusion Matrix)",
         "",
-        "| 真实类别 \\ 预测类别 | 建设用地(1) | 耕地(2) | 其他植被(3) | 水域(4) | 裸地(5) |",
-        "| :--- | :---: | :---: | :---: | :---: | :---: |",
+        "| 真实类别 \\ 预测类别 | " + " | ".join(f"{names.get(c, str(c))}({c})" for c in order) + " |",
+        "| :--- |" + " :---: |" * len(order),
     ]
 
-    class_names_map = {1: "建设用地(1)", 2: "耕地(2)", 3: "其他植被(3)", 4: "水域(4)", 5: "裸地(5)"}
     for i, row in enumerate(matrix_final):
         row_str = " | ".join(str(v) for v in row)
-        md_lines.append(f"| {class_names_map[i+1]} | {row_str} |")
+        label = f"{names.get(order[i], str(order[i]))}({order[i]})"
+        md_lines.append(f"| {label} | {row_str} |")
 
     md_lines.extend([
         "",
@@ -444,7 +450,7 @@ def generate_evaluation_report(
 
     for m in metrics_final:
         cid = m["class_id"]
-        cname = class_names_map.get(cid, str(cid))
+        cname = names.get(cid, str(cid))
         md_lines.append(f"| {cid} | {cname} | {m['precision']:.4f} | {m['recall']:.4f} | {m['f1']:.4f} | {m['support']} |")
 
     md_lines.append("")
@@ -570,7 +576,7 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
     y_final = [int(final_arr[s["row"], s["col"]]) for s in holdout_samples]
 
     eval_cfg = ctx.config.get("evaluation", {})
-    class_order = eval_cfg.get("class_order", [1, 2, 3, 4, 5])
+    class_order = eval_cfg.get("class_order", [1, 2, 3, 4])
     oa_threshold = float(eval_cfg.get("overall_accuracy_strictly_greater_than", 0.75))
     f1_target = float(eval_cfg.get("built_up_f1_target", 0.75))
 
@@ -609,6 +615,8 @@ def finalize_evaluate(ctx: ProjectContext, year: int) -> EvaluationData:
         total_groups=total_groups,
         oa_threshold=oa_threshold,
         f1_target=f1_target,
+        class_order=class_order,
+        class_names=class_map,
     )
 
     return EvaluationData(

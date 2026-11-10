@@ -29,13 +29,50 @@ reflectance_resampling = "bilinear"
 categorical_resampling = "nearest"
 
 [features]
-order = ["blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"]
+# 分类实际使用的特征列（顺序必须与 [feature_stack].order 及特征栅格波段顺序一致）
+order = [
+    "blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "savi", "mndwi", "ndbi", "ui", "bsi", "ibi",
+    "nir_mean", "nir_std", "red_mean", "red_std", "swir1_mean", "swir1_std",
+]
+
+[feature_stack]
+# 01_preprocess --step features 生成的特征堆栈顺序（A 模块交付物）
+# 说明：地形三项（elevation/slope/twi）在 2021 年成为空间位置代理、导致城镇类 F1 崩溃，
+# 默认不参与分类；如需复现实验，把它们追加到本列表末尾即可（DEM 已在 dem_path 配置）。
+order = [
+    "blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "savi", "mndwi", "ndbi", "ui", "bsi", "ibi",
+    "nir_mean", "nir_std", "red_mean", "red_std", "swir1_mean", "swir1_std",
+]
+texture_window = 5
+# DEM 平滑窗口：ASTER GDEM 在 30m 尺度噪声会主导坡度，5 表示 5×5 均值滤波；设为 1 即用原始 DEM
+dem_smooth_window = 5
+# TWI 汇流窗口外扩的像元数（67 像元 ≈ 2 km），减少边界汇水缺失
+twi_buffer_cells = 67
+dem_path = "raw/dem/xindu_dem_mosaic_30m.tif"
 
 [sampling]
 split_group = "group_id"
 holdout_fraction = 0.25
 minimum_labeled_groups_per_class = 8
 minimum_holdout_groups_per_class = 2
+
+# 像元纯度过滤：在人工多边形内部再按光谱一致性剔除混合像元。
+# 背景：人工面偏大时会混入其他地物（城镇面含绿地），导致类间混淆、建成区高估。
+# 规则只用于删除面内明显不符的像元，不改变人工边界，也不参与分类。
+[sampling.purity]
+enabled = true
+[sampling.purity.ranges]
+"1" = { ndvi = [0.0, 0.40], ndbi = [-0.10, 1.0] }
+"2" = { ndvi = [0.50, 0.78], ndbi = [-1.0, -0.12] }
+"3" = { ndvi = [0.66, 1.0], ndbi = [-1.0, -0.20] }
+"4" = { ndvi = [-1.0, 0.40], mndwi = [0.0, 1.0] }
+
+# 1992 年 TM 影像（8 月 16 日）整体 NDVI 比 2021 低约 0.05，阈值单列，避免硬套
+[sampling.purity.ranges_1992]
+"1" = { ndvi = [0.0, 0.45], ndbi = [-0.15, 1.0] }
+"2" = { ndvi = [0.45, 0.72], ndbi = [-1.0, -0.15] }
+"3" = { ndvi = [0.60, 1.0], ndbi = [-1.0, -0.22] }
+"4" = { ndvi = [-1.0, 0.45], mndwi = [0.0, 1.0] }
 
 [model]
 algorithm = "random_forest"
@@ -52,7 +89,7 @@ connectivity = 8
 [evaluation]
 overall_accuracy_strictly_greater_than = 0.75
 built_up_f1_target = 0.75
-class_order = [1, 2, 3, 4, 5]
+class_order = [1, 2, 3, 4]
 
 [analysis]
 elapsed_years = 29
@@ -61,7 +98,7 @@ area_unit = "km2"
 
 [[classes]]
 code = 1
-name = "建设用地"
+name = "城镇及建设用地"
 color = "#D95F02"
 
 [[classes]]
@@ -71,18 +108,13 @@ color = "#E6C84F"
 
 [[classes]]
 code = 3
-name = "其他植被"
+name = "林草植被"
 color = "#2E8B57"
 
 [[classes]]
 code = 4
-name = "水域"
+name = "水体"
 color = "#377EB8"
-
-[[classes]]
-code = 5
-name = "裸地"
-color = "#B69C7D"
 
 [[change_classes]]
 code = 1

@@ -26,11 +26,10 @@
       </rasterTransparency>
       <colorPalette>
         <paletteEntry color="#000000" alpha="0" value="0" label="NoData"/>
-        <paletteEntry color="#d95f02" alpha="255" value="1" label="建设用地"/>
+        <paletteEntry color="#d95f02" alpha="255" value="1" label="城镇及建设用地"/>
         <paletteEntry color="#e6c84f" alpha="255" value="2" label="耕地"/>
-        <paletteEntry color="#2e8b57" alpha="255" value="3" label="其他植被"/>
-        <paletteEntry color="#377eb8" alpha="255" value="4" label="水域"/>
-        <paletteEntry color="#b69c7d" alpha="255" value="5" label="裸地"/>
+        <paletteEntry color="#2e8b57" alpha="255" value="3" label="林草植被"/>
+        <paletteEntry color="#377eb8" alpha="255" value="4" label="水体"/>
       </colorPalette>
     </rasterrenderer>
     <brightnesscontrast brightness="0" contrast="0" gamma="1"/>

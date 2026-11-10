@@ -41,6 +41,8 @@ import joblib
 import numpy as np
 import pandas as pd
 import pytest
+
+from tests.conftest import write_ten_dim_config
 import rasterio
 from rasterio.transform import Affine, from_origin
 from shapely.geometry import Polygon, box
@@ -136,7 +138,7 @@ def _setup_g1_test_environment(tmp_path: Path) -> tuple[ProjectContext, Path, Pa
         "evaluation": {
             "overall_accuracy_strictly_greater_than": 0.75,
             "built_up_f1_target": 0.75,
-            "class_order": [1, 2, 3, 4, 5],
+            "class_order": [1, 2, 3, 4],
         },
         "analysis": {
             "elapsed_years": 29,
@@ -144,11 +146,10 @@ def _setup_g1_test_environment(tmp_path: Path) -> tuple[ProjectContext, Path, Pa
             "area_unit": "km2",
         },
         "classes": [
-            {"code": 1, "name": "建设用地", "color": "#D95F02"},
+            {"code": 1, "name": "城镇及建设用地", "color": "#D95F02"},
             {"code": 2, "name": "耕地", "color": "#E6C84F"},
-            {"code": 3, "name": "其他植被", "color": "#2E8B57"},
-            {"code": 4, "name": "水域", "color": "#377EB8"},
-            {"code": 5, "name": "裸地", "color": "#B69C7D"},
+            {"code": 3, "name": "林草植被", "color": "#2E8B57"},
+            {"code": 4, "name": "水体", "color": "#377EB8"},
         ],
     }
 
@@ -204,7 +205,7 @@ def _setup_g1_test_environment(tmp_path: Path) -> tuple[ProjectContext, Path, Pa
             '[evaluation]',
             'overall_accuracy_strictly_greater_than = 0.75',
             'built_up_f1_target = 0.75',
-            'class_order = [1, 2, 3, 4, 5]',
+            'class_order = [1, 2, 3, 4]',
             '',
             '[analysis]',
             'elapsed_years = 29',
@@ -818,7 +819,7 @@ def create_synthetic_landscape_g2(
     sr_data[4, 2:8, :] = 0.50
     sr_data[5, 2:8, :] = 0.40
 
-    # Strip of Class 3 (其他植被) in rows 10..15
+    # Strip of Class 3 (林草植被) in rows 10..15
     sr_data[0, 10:16, :] = 0.08
     sr_data[1, 10:16, :] = 0.18
     sr_data[2, 10:16, :] = 0.10
@@ -826,7 +827,7 @@ def create_synthetic_landscape_g2(
     sr_data[4, 10:16, :] = 0.28
     sr_data[5, 10:16, :] = 0.18
 
-    # Strip of Class 4 (水域) in rows 18..22
+    # Strip of Class 4 (水体) in rows 18..22
     sr_data[0, 18:23, :] = 0.15
     sr_data[1, 18:23, :] = 0.25
     sr_data[2, 18:23, :] = 0.12
@@ -834,7 +835,7 @@ def create_synthetic_landscape_g2(
     sr_data[4, 18:23, :] = 0.03
     sr_data[5, 18:23, :] = 0.02
 
-    # Strip of Class 5 (裸地) in rows 24..28
+    # Strip of Class 4 (水体) in rows 24..28
     sr_data[0, 24:29, :] = 0.28
     sr_data[1, 24:29, :] = 0.35
     sr_data[2, 24:29, :] = 0.40
@@ -977,7 +978,7 @@ def test_p2_g2_pipeline_b_to_c_to_d_python_api(tmp_path: Path) -> None:
     labels_gpkg = create_synthetic_labels_for_landscape_g2(data_dir, year=year, transform=transform)
 
     repo_root = Path(__file__).resolve().parents[2]
-    cfg = load_context(repo_root / "configs" / "project.toml", repo_root / ".env").config
+    cfg = load_context(write_ten_dim_config(repo_root, tmp_path / "project.toml"), repo_root / ".env").config
 
     ctx = ProjectContext(
         root=tmp_path,
@@ -1024,7 +1025,7 @@ def test_p2_g2_pipeline_b_to_c_to_d_python_api(tmp_path: Path) -> None:
     assert "estimator" in model_obj
     assert model_obj["split_sha256"] == split_sha256
     assert model_obj["feature_names"] == cfg["features"]["order"]
-    assert model_obj["class_codes"] == [1, 2, 3, 4, 5]
+    assert model_obj["class_codes"] == [1, 2, 3, 4]
 
     train_report_path = reports_dir / "accuracy" / f"training_{year}.json"
     assert train_report_path.exists()
@@ -1068,8 +1069,8 @@ def test_p2_g2_pipeline_b_to_c_to_d_python_api(tmp_path: Path) -> None:
 
     assert eval_json["passed_oa_threshold"] is True
     assert eval_json["oa_final"] == pytest.approx(eval_data.oa_final)
-    assert len(eval_json["matrix_final"]) == 5
-    assert len(eval_json["metrics_final"]) == 5
+    assert len(eval_json["matrix_final"]) == 4
+    assert len(eval_json["metrics_final"]) == 4
 
     report_text = eval_data.report.read_text(encoding="utf-8")
     assert "独立精度评价报告" in report_text
@@ -1088,8 +1089,7 @@ def test_p2_g2_cli_command_chain(tmp_path: Path) -> None:
     labels_gpkg = create_synthetic_labels_for_landscape_g2(data_dir, year=year, transform=transform)
 
     repo_root = Path(__file__).resolve().parents[2]
-    config_path = tmp_path / "project.toml"
-    config_path.write_text((repo_root / "configs" / "project.toml").read_text(encoding="utf-8"), encoding="utf-8")
+    config_path = write_ten_dim_config(repo_root, tmp_path / "project.toml")
 
     env_path = tmp_path / ".env"
     env_content = f"""
@@ -1150,7 +1150,7 @@ def test_p2_g2_accuracy_sub_threshold_retention(tmp_path: Path) -> None:
     labels_gpkg = create_synthetic_labels_for_landscape_g2(data_dir, year=year, transform=transform)
 
     repo_root = Path(__file__).resolve().parents[2]
-    cfg = load_context(repo_root / "configs" / "project.toml", repo_root / ".env").config
+    cfg = load_context(write_ten_dim_config(repo_root, tmp_path / "project.toml"), repo_root / ".env").config
 
     ctx = ProjectContext(
         root=tmp_path,
@@ -1178,8 +1178,8 @@ def test_p2_g2_accuracy_sub_threshold_retention(tmp_path: Path) -> None:
 
     assert eval_json["passed_oa_threshold"] is False
     assert eval_json["oa_final"] <= 0.75
-    assert len(eval_json["matrix_final"]) == 5
-    assert len(eval_json["metrics_final"]) == 5
+    assert len(eval_json["matrix_final"]) == 4
+    assert len(eval_json["metrics_final"]) == 4
 
     report_text = eval_data.report.read_text(encoding="utf-8")
     assert "未达标" in report_text or "FAIL" in report_text or "未通过" in report_text
@@ -1193,7 +1193,7 @@ def test_p2_g2_multi_year_isolation(tmp_path: Path) -> None:
     scratch_dir = tmp_path / "scratch"
 
     repo_root = Path(__file__).resolve().parents[2]
-    cfg = load_context(repo_root / "configs" / "project.toml", repo_root / ".env").config
+    cfg = load_context(write_ten_dim_config(repo_root, tmp_path / "project.toml"), repo_root / ".env").config
     ctx = ProjectContext(
         root=tmp_path,
         data=data_dir,
@@ -1227,14 +1227,21 @@ def test_p2_g2_multi_year_isolation(tmp_path: Path) -> None:
     assert v_2021.exists()
 
 
-def test_p2_g2_real_data_gap_strict_error() -> None:
-    """Verify that running G2 against the actual project data directory strictly raises FileNotFoundError."""
+def test_p2_g2_real_samples_available() -> None:
+    """样本已就位后，build_samples 应能从真实 labels.gpkg 正常产出 train/holdout。
+
+    历史背景：数据未就位时该用例断言抛 FileNotFoundError；数据到齐后改为断言可复现产出，
+    缺文件路径由单元测试 test_samples_missing_labels 覆盖。
+    """
     repo_root = Path(__file__).resolve().parents[2]
     ctx = load_context(repo_root / "configs" / "project.toml", repo_root / ".env")
 
-    with pytest.raises(FileNotFoundError) as exc_info:
-        build_samples(ctx=ctx, year=2021)
-    assert "not found" in str(exc_info.value).lower()
+    result = build_samples(ctx=ctx, year=2021)
+    assert result is not None
+    samples_dir = Path(repo_root) / "data" / "processed" / "samples" / "2021"
+    assert (samples_dir / "split.json").exists()
+    assert (samples_dir / "train.csv").exists()
+    assert (samples_dir / "holdout.csv").exists()
 
 
 # ==============================================================================
@@ -1388,11 +1395,10 @@ def g3_integration_env(tmp_path: Path) -> dict[str, Any]:
         "float_nodata": -9999.0,
         "mask_nodata": 255,
         "classes": [
-            {"code": 1, "name": "建设用地", "color": "#D95F02"},
+            {"code": 1, "name": "城镇及建设用地", "color": "#D95F02"},
             {"code": 2, "name": "耕地", "color": "#E6C84F"},
-            {"code": 3, "name": "其他植被", "color": "#2E8B57"},
-            {"code": 4, "name": "水域", "color": "#377EB8"},
-            {"code": 5, "name": "裸地", "color": "#B69C7D"},
+            {"code": 3, "name": "林草植被", "color": "#2E8B57"},
+            {"code": 4, "name": "水体", "color": "#377EB8"},
         ],
         "features": {
             "order": ["blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"],
@@ -1413,7 +1419,7 @@ def g3_integration_env(tmp_path: Path) -> dict[str, Any]:
         "evaluation": {
             "overall_accuracy_strictly_greater_than": 0.75,
             "built_up_f1_target": 0.75,
-            "class_order": [1, 2, 3, 4, 5],
+            "class_order": [1, 2, 3, 4],
         },
         "analysis": {
             "elapsed_years": 29,
@@ -1765,11 +1771,10 @@ def test_p2_g3_five_entrypoints_reproducibility(tmp_path: Path) -> None:
             "float_nodata": -9999.0,
             "mask_nodata": 255,
             "classes": [
-                {"code": 1, "name": "建设用地", "color": "#D95F02"},
+                {"code": 1, "name": "城镇及建设用地", "color": "#D95F02"},
                 {"code": 2, "name": "耕地", "color": "#E6C84F"},
-                {"code": 3, "name": "其他植被", "color": "#2E8B57"},
-                {"code": 4, "name": "水域", "color": "#377EB8"},
-                {"code": 5, "name": "裸地", "color": "#B69C7D"},
+                {"code": 3, "name": "林草植被", "color": "#2E8B57"},
+                {"code": 4, "name": "水体", "color": "#377EB8"},
             ],
             "features": {
                 "order": ["blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"],
@@ -1790,7 +1795,7 @@ def test_p2_g3_five_entrypoints_reproducibility(tmp_path: Path) -> None:
             "evaluation": {
                 "overall_accuracy_strictly_greater_than": 0.75,
                 "built_up_f1_target": 0.75,
-                "class_order": [1, 2, 3, 4, 5],
+                "class_order": [1, 2, 3, 4],
             },
             "analysis": {
                 "elapsed_years": 29,
@@ -1861,18 +1866,15 @@ def test_p2_g3_real_data_gap_integrity() -> None:
     assert data_gaps_path.exists(), "data_gaps.md must record data gap status"
 
     gaps_content = data_gaps_path.read_text(encoding="utf-8")
-    assert "未就位" in gaps_content, "data_gaps.md must acknowledge missing raw data"
+    # 原始影像与样本已补齐，但季节性、外部核验数据等缺口仍须如实登记
+    assert "缺口清单" in gaps_content, "data_gaps.md must list remaining data gaps"
+    assert "G1" in gaps_content, "data_gaps.md must record the missing summer scene (G1)"
 
-    # Verify that real data gaps prevent premature full real acceptance PASS
-    landsat_2021_l2_dir = repo / "data" / "raw" / "landsat" / "2021" / "level2"
-    samples_1992_dir = repo / "data" / "samples" / "1992"
-    samples_2021_dir = repo / "data" / "samples" / "2021"
+    samples_1992 = repo / "data" / "samples" / "1992" / "labels.gpkg"
+    samples_2021 = repo / "data" / "samples" / "2021" / "labels.gpkg"
+    assert samples_1992.exists() and samples_2021.exists(), "两期样本应已就位"
 
-    files_2021_l2 = [f for f in landsat_2021_l2_dir.glob("*") if f.name != ".gitkeep"]
-    files_samples_1992 = [f for f in samples_1992_dir.glob("*") if f.name != ".gitkeep"]
-    files_samples_2021 = [f for f in samples_2021_dir.glob("*") if f.name != ".gitkeep"]
-
-    # At this stage, 2021 Landsat L2 and manual sample labels are still missing
-    has_real_data_gaps = (len(files_2021_l2) == 0) or (len(files_samples_1992) == 0) or (len(files_samples_2021) == 0)
-    assert has_real_data_gaps is True, "Real data gaps exist; real acceptance must not be prematurely marked PASS"
+    # 精度未达标必须在报告中留痕，不能用文档预期值替代验收证据
+    acc_2021 = repo / "reports" / "accuracy" / "evaluation_2021.md"
+    assert acc_2021.exists()
 

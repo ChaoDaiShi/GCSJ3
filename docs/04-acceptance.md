@@ -34,15 +34,15 @@
 
 | ID | 要求与检查方式 | 通过条件 | 状态 | 实测证据与说明路径 |
 | :---: | :--- | :--- | :---: | :--- |
-| **S01** | 人工查看两期标签及 label_source | 历史时相依据可靠，五类定义一致，混合像元有处理规则 | **HUMAN_PENDING**<br>*(待人工标注)* | 统一五类定义与 `labels.gpkg` 字段模式验证通过；真实两期样本待在 QGIS 中人工勾画。证据：`test_v2_s01_labels_schema_and_classes` |
+| **S01** | 人工查看两期标签及 label_source | 历史时相依据可靠，四类定义一致，混合像元有处理规则 | **HUMAN_PENDING**<br>*(待人工标注)* | 统一四类定义与 `labels.gpkg` 字段模式验证通过；真实两期样本待在 QGIS 中人工勾画。证据：`test_v2_s01_labels_schema_and_classes` |
 | **S02** | 比较 split、组号和像元位置 | 训练/留出组与像元不相交；每类至少 2 个留出组；划分冻结 | **PASS (机制)**<br>*(待真实样本)* | GroupShuffleSplit 25% 组留出；训练与留出地块组及像元交集严格为空；每类 $\ge 2$ 留出组；划分冻结重用。证据：`test_v2_s02_group_shuffle_split_isolation` |
 | **S03** | 核对特征公式和 band descriptions | 六波段+四指数共 10 维，分母为 0 等无效像元排除 | **PASS** | 10 维特征顺序一致；NDVI/NDBI/MNDWI/BSI 精度通过；分母为 0 整体赋 NoData。证据：`test_v2_s03_ten_dimensional_features` |
 | **M01** | 检查训练记录及模型元数据 | 分年份模型，训练只用 train，特征顺序一致，参数可追溯 | **PASS** | 模型仅用 `train.csv` 训练，不读取 holdout 选参；`rf.joblib` 字典元数据完备。证据：`test_v2_m01_model_training_and_isolation` |
-| **M02** | 加载已保存模型重预测固定窗口 | 与保存前的预测相同，类别仅 1—5 和 NoData=0 | **PASS** | 模型持久化加载前后对固定输入推断 100% 相同；类别严格属于 1..5，无效为 0。证据：`test_v2_m02_model_persistence_and_prediction` |
+| **M02** | 加载已保存模型重预测固定窗口 | 与保存前的预测相同，类别仅 1—4 和 NoData=0 | **PASS** | 模型持久化加载前后对固定输入推断 100% 相同；类别严格属于 1..4，无效为 0。证据：`test_v2_m02_model_persistence_and_prediction` |
 | **M03** | 比对 raw 与 final 及后处理配置 | 去噪参数明确，NoData 不变，没有以留出集选择参数 | **PASS** | Sieve 4 像元合并孤立斑；二值有效掩膜保护使 NoData 像元 100% 保持一致，无腐蚀偏移。证据：`test_v2_m03_sieve_postprocessing` |
-| **Q01** | 用 holdout 重算 1992 final 矩阵 | 5×5 矩阵、OA、每类指标可复算，最终 OA>0.75 | **PASS (算法门槛)**<br>*(实景待真实样本)* | 5×5 混淆矩阵重算及指标逻辑正确；严格执行 OA > 0.75 判定（0.7500 不通过）。证据：`test_v2_q01_confusion_matrix_and_oa_threshold_1992` |
+| **Q01** | 用 holdout 重算 1992 final 矩阵 | 4×4 矩阵、OA、每类指标可复算，最终 OA>0.75 | **PASS (算法门槛)**<br>*(实景待真实样本)* | 4×4 混淆矩阵重算及指标逻辑正确；严格执行 OA > 0.75 判定（0.7500 不通过）。证据：`test_v2_q01_confusion_matrix_and_oa_threshold_1992` |
 | **Q02** | 用 holdout 重算 2021 final 矩阵 | 同上，最终 OA>0.75 | **PASS (算法门槛)**<br>*(实景待真实样本)* | 2021 混淆矩阵与门槛规则一致；未达标时不崩溃、不篡改，如实记录。证据：`test_v2_q02_confusion_matrix_and_oa_threshold_2021` |
-| **Q03** | 对照两期 raw 与 final 报告 | 两版本指标均披露，建设用地 F1 实值明确，样本分布公开 | **PASS** | 混淆矩阵 CSV、指标 CSV、JSON 及 Markdown 报告格式生成正常；建设用地 F1 独立披露。证据：`test_v2_q03_metrics_and_report_generation` |
+| **Q03** | 对照两期 raw 与 final 报告 | 两版本指标均披露，城镇及建设用地 F1 实值明确，样本分布公开 | **PASS** | 混淆矩阵 CSV、指标 CSV、JSON 及 Markdown 报告格式生成正常；城镇及建设用地 F1 独立披露。证据：`test_v2_q03_metrics_and_report_generation` |
 | **Q04** | 读取并在 QGIS 打开两期 SHP 全套 | CRS/字段/编码正确，与 final 类别一致，无 NoData 矢量 | **PASS** | 生成成套 `.shp/.shx/.dbf/.prj/.cpg`；UTF-8 编码；字段 $\le 10$ 字符；排除 NoData 面。证据：`test_v2_q04_shapefile_export` |
 
 ---

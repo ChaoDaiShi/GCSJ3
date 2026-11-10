@@ -116,3 +116,26 @@ print("Export:", exp.status)
    - `split` 字段为只读，由算法模块生成的 `split.json` 自动写入，严禁人工手工调整；
    - `group_id` 不设唯一约束（允许多个多边形共属同一空间地块），但严禁同组跨越不同地类。
 4. **统计关联严谨性**：街镇矢量图层与 `township_change_1992_2021.csv` 必须通过字符串 `unit_id` 关联（严格区分 `"001"` 与 `"1"`），无共同观测有效区时保持 `NULL`，严禁填 0 伪造指标。
+
+---
+
+## 五、 无界面（headless）导出地图的坑
+
+本机 QGIS 3.44.15 装在 `D:\Program Files\QGIS 3.44.15`，用 `bin\python-qgis-ltr.bat` 跑 PyQGIS。导出四张地图时踩到以下问题，已修在 `scripts/export_layouts.py` 里：
+
+1. **必须先 `QgsApplication.initQgis()`**：只 `import qgis.core` 不初始化，`exportToImage` 会挂住不返回。
+2. **工程内嵌布局为空**：`build_project.py` 早期只写 `<Layout name="..."/>` 占位，页面数为 0，导出必然无内容。现在改为内嵌 `qgis/layouts/*.qpt` 的真实 XML。
+3. **模板里的地图项是空 `LayerSet`**：不绑定图层就只导出空白图框。导出前按 `practice3/logical_id` 绑定图层并 `zoomToExtent`。
+4. **`loadNamedStyle` 对 paletted 渲染器无效**：返回 `('', True)` 但渲染器仍是 `singlebandgray`，图会发黑。改为解析 QML 的 `colorPalette` 显式构造 `QgsPalettedRasterRenderer`。
+5. **一次进程只导一个布局**：同一进程内连续渲染多个布局时，从第 2 个起输出空白页。现提供 `--layout <name>`，逐布局单独起进程导出。
+6. **镇街统计表无几何**：`township_change_1992_2021.csv` 直接绑定渲染不出东西，需在内存中把 `annual_intensity_pct` 连到街镇多边形并按 5 级着色。
+
+导出命令（每个布局一次）：
+
+```powershell
+$env:QT_QPA_PLATFORM = "offscreen"
+foreach ($l in 'lulc_1992','lulc_2021','urban_change','township_change') {
+  & 'D:\Program Files\QGIS 3.44.15\bin\python-qgis-ltr.bat' qgis\scripts\export_layouts.py `
+      --project qgis\xindu_1992_2021.qgs --export-dir outputs\maps --layout $l
+}
+```

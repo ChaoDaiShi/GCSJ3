@@ -35,6 +35,8 @@ from typing import Any
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import shutil
+
 import rasterio
 import rasterio.features
 import rasterio.windows
@@ -42,10 +44,14 @@ from sklearn.model_selection import GroupShuffleSplit
 
 from rs_urban.contracts import ProjectContext, SampleData
 
-# 样本 CSV 导出的标准字段名列表
-SAMPLE_CSV_FIELDNAMES = [
+# 样本 CSV 的固定标识列；特征列由配置 [features].order 动态追加
+SAMPLE_BASE_FIELDNAMES = [
     "sample_id", "group_id", "year", "class_id",
     "row", "col", "x", "y",
+]
+
+# 兼容旧调用：10 维默认字段名（基础列 + 默认特征列）
+SAMPLE_CSV_FIELDNAMES = SAMPLE_BASE_FIELDNAMES + [
     "blue", "green", "red", "nir", "swir1", "swir2",
     "ndvi", "ndbi", "mndwi", "bsi",
 ]
@@ -300,6 +306,8 @@ def extract_pixel_samples(
     labels_gdf: gpd.GeoDataFrame,
     split_map: dict[str, str],
     year: int,
+    feature_order: list[str] | None = None,
+    purity_rules: dict[int, dict[str, tuple[float, float]]] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """提取样本矢量多边形覆盖范围内的全部有效像元中心点特征，形成训练集与独立留出集。
 
@@ -330,6 +338,21 @@ def extract_pixel_samples(
     train_rows: list[dict[str, Any]] = []
     holdout_rows: list[dict[str, Any]] = []
     seen_pixels: dict[tuple[int, int], tuple[str, int]] = {}
+    purity_dropped: dict[int, int] = {}
+
+    with rasterio.open(features_path) as src_probe:
+        band_count = src_probe.count
+        descriptions = list(src_probe.descriptions)
+    if feature_order is None:
+        if descriptions and all(descriptions):
+            feature_order = [str(d) for d in descriptions]
+        else:
+            feature_order = DEFAULT_FEATURE_ORDER[:band_count]
+    feature_order = list(feature_order)
+    if len(feature_order) != band_count:
+        raise ValueError(
+            f"feature_order has {len(feature_order)} names but raster has {band_count} bands: {features_path}"
+        )
 
     with rasterio.open(features_path) as src_f, rasterio.open(valid_features_path) as src_vf:
         transform = src_f.transform
@@ -399,6 +422,22 @@ def extract_pixel_samples(
                 if not np.all(np.isfinite(feat_vals)) or np.any(feat_vals == -9999.0):
                     continue
 
+                # 像元纯度过滤：面内仍不符合该类光谱区间的像元不计入样本
+                if purity_rules and class_id in purity_rules:
+                    keep = True
+                    for fname, (lo, hi) in purity_rules[class_id].items():
+                        try:
+                            idx = feature_order.index(fname)
+                        except ValueError:
+                            raise ValueError(f"purity rule references unknown feature: {fname}")
+                        val = float(feat_vals[idx])
+                        if val < lo or val > hi:
+                            keep = False
+                            break
+                    if not keep:
+                        purity_dropped[class_id] = purity_dropped.get(class_id, 0) + 1
+                        continue
+
                 # 计算像元中心点的空间投影坐标 (x, y)
                 cx, cy = rasterio.transform.xy(transform, r_global, c_global, offset="center")
 
@@ -411,25 +450,18 @@ def extract_pixel_samples(
                     "col": c_global,
                     "x": cx,
                     "y": cy,
-                    "blue": float(feat_vals[0]),
-                    "green": float(feat_vals[1]),
-                    "red": float(feat_vals[2]),
-                    "nir": float(feat_vals[3]),
-                    "swir1": float(feat_vals[4]),
-                    "swir2": float(feat_vals[5]),
-                    "ndvi": float(feat_vals[6]),
-                    "ndbi": float(feat_vals[7]),
-                    "mndwi": float(feat_vals[8]),
-                    "bsi": float(feat_vals[9]),
                 }
+                for fname, fval in zip(feature_order, feat_vals):
+                    record[fname] = float(fval)
 
                 if split_type == "train":
                     train_rows.append(record)
                 else:
                     holdout_rows.append(record)
 
-    train_df = pd.DataFrame(train_rows, columns=SAMPLE_CSV_FIELDNAMES)
-    holdout_df = pd.DataFrame(holdout_rows, columns=SAMPLE_CSV_FIELDNAMES)
+    csv_fields = SAMPLE_BASE_FIELDNAMES + list(feature_order)
+    train_df = pd.DataFrame(train_rows, columns=csv_fields)
+    holdout_df = pd.DataFrame(holdout_rows, columns=csv_fields)
 
     # 严密核验训练组与留出组是否互斥
     train_groups = set(train_df["group_id"].unique()) if not train_df.empty else set()
@@ -459,6 +491,7 @@ def extract_pixel_samples(
         "total_train_samples": len(train_df),
         "total_holdout_samples": len(holdout_df),
         "class_summary": class_summary,
+        "purity_dropped_pixels": {int(k): int(v) for k, v in purity_dropped.items()},
     }
 
     return train_df, holdout_df, summary
@@ -506,14 +539,33 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
     holdout_path = samples_dir / "holdout.csv"
     split_path = samples_dir / "split.json"
 
-    # 步骤 1：生成 10 波段特征栅格与特征有效掩膜
-    generate_features_raster(
-        sr_path=sr_path,
-        valid_sr_path=valid_sr_path,
-        out_features_path=features_path,
-        out_valid_features_path=valid_features_path,
-        config=ctx.config,
-    )
+    # 步骤 1：准备特征栅格与有效掩膜。
+    # 首选 01_preprocess --step features 产出的 22 维规范栈（含 band description），
+    # 避免同一套特征在两处重复实现；缺失时按 [features].order 现算并落到标准路径。
+    feature_order = list(ctx.config.get("features", {}).get("order", DEFAULT_FEATURE_ORDER))
+    canonical_stack = ctx.data / "processed" / "features" / f"feat_{year}_30m.tif"
+    if not canonical_stack.exists():
+        from rs_urban.preprocess import build_feature_stack
+
+        canonical_stack = build_feature_stack(ctx, year, order=feature_order)
+
+    # 仅当波段数一致、且特征栅格不比地表反射率旧时才复用；换影像后必须重算
+    need_copy = True
+    if features_path.exists():
+        with rasterio.open(features_path) as ds:
+            need_copy = ds.count != len(feature_order)
+        if not need_copy and features_path.stat().st_mtime < sr_path.stat().st_mtime:
+            need_copy = True
+    if need_copy:
+        features_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(canonical_stack, features_path)
+    if not valid_features_path.exists():
+        with rasterio.open(valid_sr_path) as ds_v:
+            valid_profile = ds_v.profile.copy()
+            valid_arr = ds_v.read(1)
+        valid_profile.update(count=1, dtype="uint8", nodata=255)
+        with rasterio.open(valid_features_path, "w", **valid_profile) as dst_v:
+            dst_v.write((valid_arr == 1).astype(np.uint8), 1)
 
     # 步骤 2：读取人工标注地块样本
     labels_gdf = gpd.read_file(labels_path, layer="labels")
@@ -539,6 +591,17 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
         existing_split_path=split_path,
     )
 
+    # 步骤 3.5：解析像元纯度过滤规则（人工面内剔除混合像元）
+    purity_cfg = sampling_cfg.get("purity", {})
+    purity_rules: dict[int, dict[str, tuple[float, float]]] = {}
+    if purity_cfg.get("enabled"):
+        ranges_cfg = purity_cfg.get(f"ranges_{year}") or purity_cfg.get("ranges", {})
+        for cls_key, ranges in ranges_cfg.items():
+            purity_rules[int(cls_key)] = {
+                str(name): (float(bounds[0]), float(bounds[1]))
+                for name, bounds in ranges.items()
+            }
+
     # 步骤 4：提取像元样本
     train_df, holdout_df, summary = extract_pixel_samples(
         features_path=features_path,
@@ -546,6 +609,8 @@ def build_samples(ctx: ProjectContext, year: int) -> SampleData:
         labels_gdf=labels_gdf,
         split_map=split_map,
         year=year,
+        feature_order=feature_order,
+        purity_rules=purity_rules or None,
     )
 
     # 步骤 5：导出 CSV 数据集

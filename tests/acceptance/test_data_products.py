@@ -64,7 +64,7 @@ def test_v1_d01_scene_catalog_and_mtl(repo_root: Path):
     assert len(rows) >= 1, "scenes.csv should have at least the 1992 scene registered"
     row_1992 = next((r for r in rows if r["year"] == "1992"), None)
     assert row_1992 is not None, "1992 scene must be registered in scenes.csv"
-    assert row_1992["product_id"] == "LT05_L2SP_129044_19920816_20200914_02_T1"
+    assert row_1992["product_id"] == "LT05_L2SP_129039_19920816_20200914_02_T1"
     assert row_1992["sensor"] == "LANDSAT_5"
     assert row_1992["processing_level"] == "L2SP"
     assert row_1992["selection_status"] == "selected"
@@ -81,15 +81,25 @@ def test_v1_d01_scene_catalog_and_mtl(repo_root: Path):
     assert mtl_meta["SENSOR_ID"] == "TM"
     assert mtl_meta["DATE_ACQUIRED"] == "1992-08-16"
     assert int(mtl_meta["WRS_PATH"]) == 129
-    assert int(mtl_meta["WRS_ROW"]) == 44
+    assert int(mtl_meta["WRS_ROW"]) == 39
 
     # Strict metadata validator from preprocess.py
     validate_scene_metadata(row_1992, mtl_meta)
 
-    # 2021 status: verify honest reporting of gap
+    # 2021 年 Level-2 影像已就位并登记（2026-11-06 入库），此处核对登记与目录一致
     raw_2021_dir = repo_root / "data" / "raw" / "landsat" / "2021" / "level2"
-    level2_2021_files = [p for p in raw_2021_dir.glob("*") if p.name != ".gitkeep"]
-    assert len(level2_2021_files) == 0, "2021 raw scene is currently missing (honest gap recorded)"
+    level2_2021_dirs = [p for p in raw_2021_dir.glob("LC08_L2SP_*") if p.is_dir()]
+    assert level2_2021_dirs, "2021 Level-2 scene directory must exist"
+
+    # 2021 年有两期 Level-2 影像（2 月冬季、7 月夏季），只允许一条为 selected
+    rows_2021 = [r for r in rows if r["year"] == "2021" and r["processing_level"] == "L2SP"]
+    assert len(rows_2021) >= 2, "2021 should register both winter and summer Level-2 scenes"
+    selected_2021 = [r for r in rows_2021 if r["selection_status"] == "selected"]
+    assert len(selected_2021) == 1, "exactly one 2021 Level-2 scene may be selected"
+    row_2021 = selected_2021[0]
+    assert row_2021["product_id"] == "LC08_L2SP_129039_20210731_20210804_02_T1"
+    assert row_2021["acquisition_date"] == "2021-07-31"
+    assert (raw_2021_dir / row_2021["product_id"]).exists()
 
 
 # ===========================================================================
@@ -98,7 +108,7 @@ def test_v1_d01_scene_catalog_and_mtl(repo_root: Path):
 
 def test_v1_d02_reflective_bands_qa_and_mtl_readable(repo_root: Path):
     """D02: Read TM 6 reflective bands, QA_PIXEL, QA_RADSAT with rasterio."""
-    scene_id = "LT05_L2SP_129044_19920816_20200914_02_T1"
+    scene_id = "LT05_L2SP_129039_19920816_20200914_02_T1"
     raw_1992_dir = repo_root / "data" / "raw" / "landsat" / "1992" / "level2" / scene_id
 
     # Six reflective bands for TM: B1, B2, B3, B4, B5, B7
@@ -131,7 +141,7 @@ def test_v1_d02_reflective_bands_qa_and_mtl_readable(repo_root: Path):
 
 def test_v1_d03_acquisition_date_and_cloud_cover(repo_root: Path):
     """D03: Verify acquisition date matches target request and cloud cover is recorded."""
-    scene_id = "LT05_L2SP_129044_19920816_20200914_02_T1"
+    scene_id = "LT05_L2SP_129039_19920816_20200914_02_T1"
     raw_1992_dir = repo_root / "data" / "raw" / "landsat" / "1992" / "level2" / scene_id
     mtl_txt = raw_1992_dir / f"{scene_id}_MTL.txt"
     meta = parse_mtl_metadata(mtl_txt)

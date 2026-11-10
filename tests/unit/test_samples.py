@@ -470,6 +470,11 @@ def test_build_samples_end_to_end_synthetic(tmp_path: Path, repo_root: Path) -> 
         import tomllib
         cfg = tomllib.load(f)
 
+    # 合成环境没有 DEM，固定用 10 维（波段+指数），避免触发地形特征
+    ten = ["blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"]
+    cfg.setdefault("feature_stack", {})["order"] = ten
+    cfg["features"]["order"] = ten
+
     ctx = ProjectContext(
         root=tmp_path,
         data=data_dir,
@@ -546,7 +551,9 @@ def test_cli_02_samples_execution(tmp_path: Path, repo_root: Path) -> None:
     )
     env_file.write_text(env_content, encoding="utf-8")
 
-    config_path = repo_root / "configs" / "project.toml"
+    from tests.conftest import write_ten_dim_config
+
+    config_path = write_ten_dim_config(repo_root, tmp_path / "project.toml")
     script_path = repo_root / "src" / "02_samples.py"
 
     cmd = [

@@ -47,6 +47,8 @@ from rs_urban.preprocess import (
     preprocess_year,
     pansharpen_2021,
     convert_dn_to_toa,
+    build_feature_stack,
+    DEFAULT_FEATURE_STACK_ORDER,
 )
 
 
@@ -695,4 +697,112 @@ def test_cli_preprocess_invocation(tmp_path: Path):
     res_help = subprocess.run(cmd_help, capture_output=True, text=True)
     assert res_help.returncode == 0
     assert "--step" in res_help.stdout
+
+
+# ---------------------------------------------------------------------------
+# Test 11: 21-dim feature stack
+# ---------------------------------------------------------------------------
+
+def test_build_feature_stack_22_bands(tmp_path: Path):
+    """Verify feature stack: 22 bands in configured order, shared indices match samples.calculate_indices."""
+    from rs_urban.samples import calculate_indices
+
+    root = tmp_path / "project"
+    data = root / "data"
+    outputs = root / "outputs"
+    reports = root / "reports"
+
+    h, w = 8, 8
+    crs = "EPSG:32648"
+    transform = Affine(30.0, 0.0, 500000.0, 0.0, -30.0, 3380090.0)
+    nodata = -9999.0
+
+    # 6 波段反射率：每像元略有差异，便于检查指数计算
+    sr = np.empty((6, h, w), dtype=np.float32)
+    base = np.array([0.05, 0.08, 0.06, 0.30, 0.15, 0.09], dtype=np.float32)
+    ramp = (np.arange(h * w, dtype=np.float32).reshape(h, w) * 1e-4)
+    for b in range(6):
+        sr[b] = base[b] + ramp * (b + 1)
+
+    valid = np.ones((h, w), dtype=np.uint8)
+    valid[0, 0] = 0  # 区内无效像元
+
+    sr_dir = data / "processed" / "1992"
+    sr_dir.mkdir(parents=True, exist_ok=True)
+    profile = {
+        "driver": "GTiff", "height": h, "width": w, "count": 6, "dtype": "float32",
+        "crs": crs, "transform": transform, "nodata": nodata,
+    }
+    with rasterio.open(sr_dir / "sr_30m.tif", "w", **profile) as dst:
+        src = sr.copy()
+        src[:, 0, 0] = nodata
+        dst.write(src)
+    with rasterio.open(
+        sr_dir / "valid_sr_30m.tif", "w", driver="GTiff", height=h, width=w,
+        count=1, dtype="uint8", crs=crs, transform=transform, nodata=0,
+    ) as dst:
+        dst.write(valid, 1)
+
+    # DEM：与网格同尺寸，逐行升高 2 m
+    dem_dir = data / "raw" / "dem"
+    dem_dir.mkdir(parents=True, exist_ok=True)
+    dem = (500 + np.arange(h, dtype=np.int16).reshape(h, 1) * 2) * np.ones((h, w), dtype=np.int16)
+    with rasterio.open(
+        dem_dir / "dem.tif", "w", driver="GTiff", height=h, width=w,
+        count=1, dtype="int16", crs=crs, transform=transform,
+    ) as dst:
+        dst.write(dem, 1)
+
+    ctx = ProjectContext(
+        root=root, data=data, outputs=outputs, reports=reports, scratch=root / "scratch",
+        config={
+            "float_nodata": nodata,
+            "feature_stack": {
+                "order": list(DEFAULT_FEATURE_STACK_ORDER),
+                "texture_window": 3,
+                "dem_smooth_window": 1,
+                "twi_buffer_cells": 2,
+                "dem_path": "raw/dem/dem.tif",
+            },
+        },
+    )
+
+    out = build_feature_stack(ctx, 1992)
+    assert out.exists()
+
+    with rasterio.open(out) as ds:
+        assert ds.count == 22
+        assert list(ds.descriptions) == DEFAULT_FEATURE_STACK_ORDER
+        assert ds.dtypes[0] == "float32"
+        assert ds.nodata == nodata
+        stack = ds.read()
+
+    # 无效像元：全部 22 维均为 NoData
+    assert np.all(stack[:, 0, 0] == nodata)
+    # 有效像元：不应残留 NoData
+    assert np.all(stack[:, 1:, :] != nodata)
+
+    # 4 个共用指数必须与 samples.calculate_indices 完全一致
+    ref, _ = calculate_indices(sr, valid, float_nodata=nodata)
+    ref_names = ["blue", "green", "red", "nir", "swir1", "swir2", "ndvi", "ndbi", "mndwi", "bsi"]
+    for name in ("ndvi", "ndbi", "mndwi", "bsi"):
+        i_new = DEFAULT_FEATURE_STACK_ORDER.index(name)
+        i_old = ref_names.index(name)
+        assert np.allclose(stack[i_new][1:, :], ref[i_old][1:, :], atol=1e-6)
+
+    # 高程应等于输入的 DEM（平滑窗口 1）
+    elev = stack[DEFAULT_FEATURE_STACK_ORDER.index("elevation")]
+    assert np.allclose(elev[1:, :], dem[1:, :].astype(np.float32), atol=1e-3)
+
+    # TWI：有效区应为有限值，且沿下坡方向（行号增大）累积量增加
+    twi = stack[DEFAULT_FEATURE_STACK_ORDER.index("twi")]
+    assert np.all(np.isfinite(twi[1:, :]))
+    assert np.all(twi[1:, :] > -10) and np.all(twi[1:, :] < 30)
+
+    # 报告 sidecar 记录波段顺序与平滑参数
+    rep = json.loads((reports / "data" / "features_1992.json").read_text(encoding="utf-8"))
+    assert rep["feature_count"] == 22
+    assert rep["feature_order"] == DEFAULT_FEATURE_STACK_ORDER
+    assert rep["dem_smooth_window"] == 1
+    assert rep["twi_buffer_cells"] == 2
 

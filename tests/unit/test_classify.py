@@ -1,7 +1,7 @@
 """Unit tests for P1-C: Random Forest training and windowed raster prediction.
 
 Tests verify:
-  1. Five-class separable sample classification yields valid classes in 1-5.
+  1. Four-class separable sample classification yields valid classes in 1-4.
   2. Model save and reload consistency (identical predictions, exact dict structure).
   3. Feature order adherence: columns extracted strictly by config features.order.
   4. Windowed raster prediction preserves NoData=0 and writes proper colormap.
@@ -63,11 +63,10 @@ def mock_config() -> dict[str, Any]:
             "n_jobs": 1,
         },
         "classes": [
-            {"code": 1, "name": "建设用地", "color": "#D95F02"},
+            {"code": 1, "name": "城镇及建设用地", "color": "#D95F02"},
             {"code": 2, "name": "耕地", "color": "#E6C84F"},
-            {"code": 3, "name": "其他植被", "color": "#2E8B57"},
-            {"code": 4, "name": "水域", "color": "#377EB8"},
-            {"code": 5, "name": "裸地", "color": "#B69C7D"},
+            {"code": 3, "name": "林草植被", "color": "#2E8B57"},
+            {"code": 4, "name": "水体", "color": "#377EB8"},
         ],
     }
 
@@ -153,7 +152,6 @@ def test_hex_to_rgba_and_colormap(mock_config: dict[str, Any]) -> None:
     assert colormap[2] == (230, 200, 79, 255)
     assert colormap[3] == (46, 139, 87, 255)
     assert colormap[4] == (55, 126, 184, 255)
-    assert colormap[5] == (182, 156, 125, 255)
 
 
 def test_train_separable_classes(
@@ -161,7 +159,7 @@ def test_train_separable_classes(
     mock_config: dict[str, Any],
     grouped_samples_fixture: dict[str, Any],
 ) -> None:
-    """Train on 5-class separable samples, verify classes are within 1-5 and accuracy is high."""
+    """Train on 4-class separable samples, verify classes are within 1-4 and accuracy is high."""
     samples_csv = Path(grouped_samples_fixture["csv_path"])
     split_json = tmp_path / "split.json"
     with open(split_json, "w", encoding="utf-8") as f:
@@ -207,7 +205,7 @@ def test_model_save_and_reload_consistency(
     assert set(model_dict.keys()) == expected_keys
     assert model_dict["year"] == 2021
     assert model_dict["feature_names"] == mock_config["features"]["order"]
-    assert model_dict["class_codes"] == [1, 2, 3, 4, 5]
+    assert model_dict["class_codes"] == [1, 2, 3, 4]
 
     # Save to joblib and reload
     joblib_path = tmp_path / "rf.joblib"
@@ -440,8 +438,8 @@ def test_train_predict_pipeline_and_holdout_isolation(
 
     assert rep["schema_version"] == 1
     assert rep["year"] == 2021
-    assert rep["num_training_pixels"] == 120
-    assert rep["num_training_groups"] == 40
+    assert rep["num_training_pixels"] == 96
+    assert rep["num_training_groups"] == 32
     assert "holdout" not in str(rep).lower() or "holdout" not in rep
 
 
@@ -519,8 +517,9 @@ def test_cli_03_classify(
     create_synthetic_rasters(raster_dir, mock_config["features"]["order"], width=8, height=8)
 
     # Copy project.toml
-    config_path = tmp_path / "project.toml"
-    config_path.write_text((get_repo_root() / "configs" / "project.toml").read_text(encoding="utf-8"), encoding="utf-8")
+    from tests.conftest import write_ten_dim_config
+
+    config_path = write_ten_dim_config(get_repo_root(), tmp_path / "project.toml")
 
     # Write .env
     env_path = tmp_path / ".env"

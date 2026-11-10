@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import shutil
 from pathlib import Path
 
 import pytest
@@ -70,14 +71,17 @@ def test_build_project_release_blocks_when_inputs_missing(tmp_path: Path):
     config_file = REPO_ROOT / "configs" / "project.toml"
     project_out = tmp_path / "xindu_release_test.qgz"
 
-    # In clean repo without real raster outputs generated, release mode must block
+    # 真实成果已生成时 release 模式应当放行；要验证"缺输入即拦截"，
+    # 需构造一个只有 configs/ 的空仓库，让必填输入全部缺失。
+    empty_repo = tmp_path / "empty_repo"
+    (empty_repo / "configs").mkdir(parents=True)
+    shutil.copy2(config_file, empty_repo / "configs" / "project.toml")
+
     report = build_project(
-        config_path=config_file,
+        config_path=empty_repo / "configs" / "project.toml",
         project_path=project_out,
         mode="release",
     )
 
-    # Since outputs/rasters/lulc_1992_final_30m.tif etc. do not exist on disk,
-    # release mode MUST report BLOCKED and list missing inputs per contract!
     assert report.status in ["BLOCKED", "FAILED"]
     assert len(report.missing_inputs) > 0

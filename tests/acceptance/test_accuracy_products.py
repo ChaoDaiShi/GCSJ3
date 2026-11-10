@@ -73,28 +73,32 @@ from rs_urban.evaluate import (
 # ===========================================================================
 
 def test_v2_s01_labels_schema_and_classes(repo_root: Path):
-    """S01: Inspect required sample schema, five-class definitions, and real data gap status."""
+    """S01: Inspect required sample schema, four-class definitions, and real data gap status."""
     expected_fields = [
         "sample_id", "group_id", "year", "class_id",
         "label_source", "source_date", "annotator", "split"
     ]
     expected_classes = {
-        1: "建设用地",
+        1: "城镇及建设用地",
         2: "耕地",
-        3: "其他植被",
-        4: "水域",
-        5: "裸地",
+        3: "林草植被",
+        4: "水体",
     }
-    assert len(expected_classes) == 5
+    assert len(expected_classes) == 4
 
     # Check real samples directory: honest reporting of unannotated state
     samples_1992 = repo_root / "data" / "samples" / "1992"
     samples_2021 = repo_root / "data" / "samples" / "2021"
 
-    files_1992 = [p for p in samples_1992.glob("*") if p.name != ".gitkeep"]
-    files_2021 = [p for p in samples_2021.glob("*") if p.name != ".gitkeep"]
-    assert len(files_1992) == 0, "1992 labels pending manual visual annotation"
-    assert len(files_2021) == 0, "2021 labels pending manual visual annotation"
+    # 样本就位后必须满足四类定义与组数门槛；未就位时允许缺失（如实记录）
+    for samples_dir in (samples_1992, samples_2021):
+        labels = samples_dir / "labels.gpkg"
+        if not labels.exists():
+            continue
+        labeled = gpd.read_file(labels, layer="labels")
+        assert set(labeled["class_id"].unique()) <= set(expected_classes)
+        assert labeled.groupby("class_id")["group_id"].nunique().min() >= 8
+        assert labeled["label_source"].notna().all()
 
     # Verify standard schema on a representative GeoDataFrame
     poly = box(500000, 3380000, 500100, 3380100)
@@ -143,8 +147,8 @@ def test_v2_s02_group_shuffle_split_isolation(grouped_samples_fixture: dict):
     holdout_ids = set(holdout_gdf["sample_id"])
     assert len(train_ids.intersection(holdout_ids)) == 0
 
-    # Assert each of the 5 classes has at least 2 holdout groups
-    for cid in range(1, 6):
+    # Assert each of the 4 classes has at least 2 holdout groups
+    for cid in range(1, 5):
         c_holdout_groups = set(holdout_gdf[holdout_gdf["class_id"] == cid]["group_id"])
         assert len(c_holdout_groups) >= 2, f"Class {cid} has fewer than 2 holdout groups"
 
@@ -318,14 +322,14 @@ def test_v2_m03_sieve_postprocessing(tmp_path: Path):
 # ===========================================================================
 
 def test_v2_q01_confusion_matrix_and_oa_threshold_1992(metric_fixture: dict):
-    """Q01: Verify 5x5 confusion matrix calculation and strict OA > 0.75 rule for 1992."""
+    """Q01: Verify 4x4 confusion matrix calculation and strict OA > 0.75 rule for 1992."""
     data = metric_fixture["data"]
     y_true = np.array(data["y_true"])
     y_pred = np.array(data["y_pred"])
 
-    matrix, oa = calculate_confusion_matrix(y_true, y_pred, class_order=[1, 2, 3, 4, 5])
-    assert len(matrix) == 5
-    assert len(matrix[0]) == 5
+    matrix, oa = calculate_confusion_matrix(y_true, y_pred, class_order=[1, 2, 3, 4])
+    assert len(matrix) == 4
+    assert len(matrix[0]) == 4
     assert abs(oa - 0.80) < 1e-6
 
     # Strict threshold test: OA > 0.75
@@ -340,12 +344,12 @@ def test_v2_q01_confusion_matrix_and_oa_threshold_1992(metric_fixture: dict):
 # ===========================================================================
 
 def test_v2_q02_confusion_matrix_and_oa_threshold_2021():
-    """Q02: Verify 2021 evaluation follows identical 5x5 matrix structure and strict OA > 0.75 requirement."""
+    """Q02: Verify 2021 evaluation follows identical 4x4 matrix structure and strict OA > 0.75 requirement."""
     # Construct synthetic 2021 predictions with OA = 0.70 (failing threshold)
-    y_true = np.array([1, 1, 2, 2, 3, 3, 4, 4, 5, 5])
-    y_pred = np.array([1, 2, 2, 1, 3, 3, 4, 4, 1, 5])  # 7 correct out of 10 -> OA = 0.70
+    y_true = np.array([1, 1, 2, 2, 3, 3, 4, 4, 1, 4])
+    y_pred = np.array([1, 2, 2, 1, 3, 3, 4, 4, 1, 1])  # 7 correct out of 10 -> OA = 0.70
 
-    matrix, oa = calculate_confusion_matrix(y_true, y_pred, class_order=[1, 2, 3, 4, 5])
+    matrix, oa = calculate_confusion_matrix(y_true, y_pred, class_order=[1, 2, 3, 4])
     assert abs(oa - 0.70) < 1e-6
 
     # System must register failure without crashing or hiding
@@ -359,20 +363,20 @@ def test_v2_q02_confusion_matrix_and_oa_threshold_2021():
 
 def test_v2_q03_metrics_and_report_generation(tmp_path: Path):
     """Q03: Verify class-level metrics calculation, built-up F1 score reporting, and table exports."""
-    y_true = np.array([1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5])
-    y_pred = np.array([1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5])  # 1 misclassification
+    y_true = np.array([1, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4])
+    y_pred = np.array([1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 4])  # 1 misclassification
 
-    matrix, oa = calculate_confusion_matrix(y_true, y_pred, class_order=[1, 2, 3, 4, 5])
-    metrics = calculate_class_metrics(matrix, class_order=[1, 2, 3, 4, 5])
+    matrix, oa = calculate_confusion_matrix(y_true, y_pred, class_order=[1, 2, 3, 4])
+    metrics = calculate_class_metrics(matrix, class_order=[1, 2, 3, 4])
 
-    assert len(metrics) == 5
+    assert len(metrics) == 4
     built_metric = next(m for m in metrics if m["class_id"] == 1)
     assert "f1" in built_metric
     assert built_metric["f1"] > 0.0
 
     # Test CSV exports
     cm_csv = tmp_path / "confusion.csv"
-    export_confusion_matrix_csv(cm_csv, matrix, class_order=[1, 2, 3, 4, 5])
+    export_confusion_matrix_csv(cm_csv, matrix, class_order=[1, 2, 3, 4])
     assert cm_csv.exists()
 
     met_csv = tmp_path / "metrics.csv"
@@ -395,7 +399,7 @@ def test_v2_q04_shapefile_export(tmp_path: Path):
 
     transform = from_origin(500000, 3380000, 30, 30)
     study_area_geom = box(499000, 3379000, 501000, 3381000)
-    class_names = {1: "建设用地", 2: "耕地", 3: "其他植被", 4: "水域", 5: "裸地"}
+    class_names = {1: "城镇及建设用地", 2: "耕地", 3: "林草植被", 4: "水体"}
 
     vectorize_and_clip(
         raster_arr=arr,

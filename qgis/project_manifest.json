@@ -1,12 +1,97 @@
 {
   "schema_version": "1.0",
-  "build_id": "build_20261029_201648",
+  "build_id": "build_20261110_110857",
   "project": "xindu_1992_2021.qgz",
   "mode": "development",
   "target_crs": "EPSG:32648",
-  "config_sha256": "1628512d9c57235ddbd64032da78a4d08e5e0d37b60cf87a5cb8e4cf36253747",
+  "config_sha256": "a1fab847f0e1df17a1d883d6379cfb224e88d42c531326f3afa98e44dc5c52d0",
   "qgis_version": "3.44 LTR",
-  "layers": [],
+  "layers": [
+    {
+      "logical_id": "study_area",
+      "provider": "ogr",
+      "relative_uri": "../data/processed/boundaries/xindu_2021.gpkg|layername=study_area",
+      "sha256": "e2354cdbe33460da0a792a648d10472a4a9975476aa9ca7ea111e4ff031d4864",
+      "style": "qgis/styles/study_area.qml"
+    },
+    {
+      "logical_id": "townships",
+      "provider": "ogr",
+      "relative_uri": "../data/processed/boundaries/xindu_2021.gpkg|layername=townships",
+      "sha256": "e2354cdbe33460da0a792a648d10472a4a9975476aa9ca7ea111e4ff031d4864",
+      "style": "qgis/styles/townships.qml"
+    },
+    {
+      "logical_id": "labels_1992",
+      "provider": "ogr",
+      "relative_uri": "../data/samples/1992/labels.gpkg|layername=labels",
+      "sha256": "7c0d868622cc5742c10e83f3b12c668ace0f529c34e71ad91e17030169780709",
+      "style": "qgis/forms/sample_labels.qml"
+    },
+    {
+      "logical_id": "labels_2021",
+      "provider": "ogr",
+      "relative_uri": "../data/samples/2021/labels.gpkg|layername=labels",
+      "sha256": "c9a0884c72d0f1817f481fe3c1795d0c3e649b4e7823906c60b32b73934cd446",
+      "style": "qgis/forms/sample_labels.qml"
+    },
+    {
+      "logical_id": "sr_1992",
+      "provider": "gdal",
+      "relative_uri": "../data/processed/1992/sr_30m.tif",
+      "sha256": "89ae08832baee43df3558ee84c25528e94397d713dca7356f269dd555968b457",
+      "style": null
+    },
+    {
+      "logical_id": "sr_2021",
+      "provider": "gdal",
+      "relative_uri": "../data/processed/2021/sr_30m.tif",
+      "sha256": "022a65286124814982c65e3882f98573503fdf1b5e1c562d51a1e72658a1d5cb",
+      "style": null
+    },
+    {
+      "logical_id": "lulc_1992_final",
+      "provider": "gdal",
+      "relative_uri": "../outputs/rasters/lulc_1992_final_30m.tif",
+      "sha256": "2c747aedbe206e977733996113759cd218a2007548f1a84a3d95ce2d9f09d3aa",
+      "style": "qgis/styles/lulc_4class.qml"
+    },
+    {
+      "logical_id": "lulc_2021_final",
+      "provider": "gdal",
+      "relative_uri": "../outputs/rasters/lulc_2021_final_30m.tif",
+      "sha256": "834e5a3654037839760de57451f53eac849885f56e96c026f8793c87fa7145b0",
+      "style": "qgis/styles/lulc_4class.qml"
+    },
+    {
+      "logical_id": "change",
+      "provider": "gdal",
+      "relative_uri": "../outputs/rasters/change_1992_2021_30m.tif",
+      "sha256": "b6de58b95924a4707fe37c91fe269598efd81d8b2f0a8303a732396a36f226b4",
+      "style": "qgis/styles/change_4class.qml"
+    },
+    {
+      "logical_id": "change_vector",
+      "provider": "ogr",
+      "relative_uri": "../outputs/vectors/change/urban_change.gpkg",
+      "sha256": "67a002bdcce3d7b641184d70e9f3cf12980243617ecdd551d3a04648711e76b6",
+      "style": "qgis/styles/change_4class.qml"
+    },
+    {
+      "logical_id": "valid_common",
+      "provider": "gdal",
+      "relative_uri": "../data/processed/common/valid_common_30m.tif",
+      "sha256": "21cbca3734b7fa9b987ab29f6562ce77f03db297572122944c89380d306babff",
+      "style": null
+    },
+    {
+      "logical_id": "township_stats",
+      "provider": "ogr",
+      "relative_uri": "../outputs/tables/township_change_1992_2021.csv",
+      "sha256": "d976577efa23d98879166505b0620c36dcf8cf250268052edef2953cece374ec",
+      "style": "qgis/styles/township_intensity.qml"
+    }
+  ],
   "layouts": [
     "lulc_1992",
     "lulc_2021",
@@ -14,5 +99,5 @@
     "township_change"
   ],
   "status": "PASSED",
-  "timestamp": "2026-10-29T20:16:48.597082"
+  "timestamp": "2026-11-10T11:08:57.139106"
 }

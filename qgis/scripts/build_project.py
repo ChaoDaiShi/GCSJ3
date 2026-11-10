@@ -97,7 +97,7 @@ LAYER_REGISTRY: List[LayerSpec] = [
         group_name="1992",
         source_type="raster",
         relative_path="outputs/rasters/lulc_1992_final_30m.tif",
-        style_qml="qgis/styles/lulc_5class.qml",
+        style_qml="qgis/styles/lulc_4class.qml",
         required_in_release=True,
         display_name="1992年土地覆被最终分类(30m)",
     ),
@@ -106,7 +106,7 @@ LAYER_REGISTRY: List[LayerSpec] = [
         group_name="2021",
         source_type="raster",
         relative_path="outputs/rasters/lulc_2021_final_30m.tif",
-        style_qml="qgis/styles/lulc_5class.qml",
+        style_qml="qgis/styles/lulc_4class.qml",
         required_in_release=True,
         display_name="2021年土地覆被最终分类(30m)",
     ),
@@ -118,6 +118,15 @@ LAYER_REGISTRY: List[LayerSpec] = [
         style_qml="qgis/styles/change_4class.qml",
         required_in_release=True,
         display_name="1992—2021年建设用地扩张变化(30m)",
+    ),
+    LayerSpec(
+        logical_id="change_vector",
+        group_name="变化",
+        source_type="vector",
+        relative_path="outputs/vectors/change/urban_change.gpkg",
+        style_qml="qgis/styles/change_4class.qml",
+        required_in_release=True,
+        display_name="建设用地变化面(四类状态)",
     ),
     LayerSpec(
         logical_id="valid_common",
@@ -266,6 +275,22 @@ def generate_qgs_xml(
     joined_layers_xml = "\n".join(layers_xml_snippets)
     joined_tree_xml = "\n".join(layer_tree_group_snippets)
 
+    # 布局：优先内嵌 qgis/layouts/<name>.qpt 的真实内容，否则退化为空占位布局
+    layout_snippets: List[str] = []
+    for lyt in layouts:
+        qpt_path = repo_root / "qgis" / "layouts" / f"{lyt}.qpt"
+        if qpt_path.exists():
+            raw = qpt_path.read_text(encoding="utf-8")
+            start = raw.find("<Layout")
+            end = raw.rfind("</Layout>")
+            if start != -1 and end != -1:
+                body = raw[start:end + len("</Layout>")]
+                body = body.replace(f'name="{lyt}"', f'name="{lyt}"', 1)
+                layout_snippets.append(body)
+                continue
+        layout_snippets.append(f'<Layout name="{lyt}"/>')
+    joined_layouts_xml = "\n".join(layout_snippets)
+
     xml_content = f"""<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
 <qgis version="3.44.15-Solothurn" projectname="xindu_1992_2021">
   <title>成都市新都区1992至2021年遥感分类与建设用地扩张分析</title>
@@ -287,7 +312,7 @@ def generate_qgs_xml(
 {joined_layers_xml}
   </projectlayers>
   <Layouts>
-    {"".join([f'<Layout name="{lyt}"/>' for lyt in layouts])}
+    {joined_layouts_xml}
   </Layouts>
 </qgis>
 """
@@ -359,8 +384,12 @@ def build_project(
                 expected="Valid SHA256",
             ))
 
-            # Calculate relative URI from project location
-            rel_to_proj = os.path.relpath(full_path, start=project_path.parent).replace("\\", "/")
+            # Calculate relative URI from project location.
+            # 跨盘符（如工程在 C: 临时目录、仓库在 E:）时无法求相对路径，退化为绝对路径。
+            try:
+                rel_to_proj = os.path.relpath(full_path, start=project_path.parent).replace("\\", "/")
+            except ValueError:
+                rel_to_proj = str(full_path).replace("\\", "/")
             if spec.sublayer:
                 rel_uri = f"{rel_to_proj}|layername={spec.sublayer}"
             else:

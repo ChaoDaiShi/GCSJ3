@@ -35,7 +35,7 @@
 | **W06** | 工程装配骨架、图层组与稳定 logical_id | P1 | Q / T | W04, W05 | `qgis/scripts/build_project.py` (装配模块) | 7 大图层组树形结构，稳定 logical_id 属性，不依赖动态图层名 |
 | **W07** | 输入 catalog、边界标准化与来源许可登记 | P1 | D / T | W01 | `data/catalog/`, 许可报告 | scenes/boundaries 表头与稳定 unit_id 检查，无空几何/重叠 |
 | **W08** | 既有公共网格、QA/SR 核心审计与补测 | P1 | D / C | W02, W07 | `src/rs_urban/preprocess.py`, 测试 | EPSG:32648, 30m 对齐，`mask==1` 严格三态判定，排除 Cirrus/Fill |
-| **W09** | 五类/变化 QML、NoData 与源配置一致检查 | P1 | Q / D | W02, W04 | `qgis/styles/*.qml`, 测试 | 5 类与 4 类色表/代码与 project.toml 逐像元、逐字段完全一致 |
+| **W09** | 四类/变化 QML、NoData 与源配置一致检查 | P1 | Q / D | W02, W04 | `qgis/styles/*.qml`, 测试 | 4 类与 4 类色表/代码与 project.toml 逐像元、逐字段完全一致 |
 | **W10** | 十维特征适配审计及无效向量测试 | P1 | C / D | W04, W08 | `src/rs_urban/samples.py` | 10 维固定顺序，任何维度 NoData/分母为 0 则整向量为 -9999.0 |
 | **W11** | 样本表单、解译手册、两期标注交叉复核 | P1 | D / Q | W02, W07, W08 | `qgis/forms/sample_form_rules.json`, 手册 | year/class_id/sample_id/group_id/interpreter 完整约束 |
 | **W12** | 分组冻结、提取表、泄漏检查、split 摘要 | P1 | D / C | W10, W11 | `src/rs_urban/samples.py`, split.json | 25% GroupShuffleSplit，组与像元交集严格为空，每类 ≥8 组 |

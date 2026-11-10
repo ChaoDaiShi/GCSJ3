@@ -112,7 +112,7 @@ def create_feature_fixture(out_dir: Path) -> dict[str, Any]:
 
 
 def create_grouped_samples_fixture(out_dir: Path) -> dict[str, Any]:
-    """Create grouped_samples_fixture with 5 classes, 8 groups per class, and unique group_ids."""
+    """Create grouped_samples_fixture with 4 classes, 8 groups per class, and unique group_ids."""
     out_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / "samples.csv"
 
@@ -127,7 +127,7 @@ def create_grouped_samples_fixture(out_dir: Path) -> dict[str, Any]:
     groups_summary: dict[int, list[str]] = {}
 
     sample_counter = 0
-    for class_id in range(1, 6):
+    for class_id in range(1, 5):
         groups_summary[class_id] = []
         for g_idx in range(1, 9):
             group_id = f"cls_{class_id}_grp_{g_idx:02d}"
@@ -187,7 +187,7 @@ def create_grouped_samples_fixture(out_dir: Path) -> dict[str, Any]:
         "fixture_name": "grouped_samples_fixture",
         "csv_path": str(csv_path),
         "total_samples": len(rows),
-        "num_classes": 5,
+        "num_classes": 4,
         "groups_per_class": 8,
         "groups_summary": groups_summary,
     }
@@ -202,29 +202,28 @@ def create_grouped_samples_fixture(out_dir: Path) -> dict[str, Any]:
 def create_metric_fixture(out_dir: Path) -> dict[str, Any]:
     """Create metric_fixture for evaluation and confusion matrix validation.
 
-    Truth: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
-    Pred:  [1, 2, 2, 2, 3, 3, 4, 4, 5, 1]
+    Truth: [1, 1, 2, 2, 3, 3, 4, 4, 1, 4]
+    Pred:  [1, 2, 2, 2, 3, 3, 4, 4, 1, 1]
     Expected:
       - Total samples: 10
       - Correct predictions: 8 -> Overall Accuracy (OA) = 0.8
-      - Full 5x5 confusion matrix (row=true, col=pred):
-          [[1, 1, 0, 0, 0],
-           [0, 2, 0, 0, 0],
-           [0, 0, 2, 0, 0],
-           [0, 0, 0, 2, 0],
-           [1, 0, 0, 0, 1]]
+      - Full 4x4 confusion matrix (row=true, col=pred):
+          [[2, 1, 0, 0],
+           [0, 2, 0, 0],
+           [0, 0, 2, 0],
+           [1, 0, 0, 2]]
     """
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    y_true = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
-    y_pred = [1, 2, 2, 2, 3, 3, 4, 4, 5, 1]
+    y_true = [1, 1, 2, 2, 3, 3, 4, 4, 1, 4]
+    y_pred = [1, 2, 2, 2, 3, 3, 4, 4, 1, 1]
 
-    classes = [1, 2, 3, 4, 5]
-    matrix = [[0] * 5 for _ in range(5)]
+    classes = [1, 2, 3, 4]
+    matrix = [[0] * 4 for _ in range(4)]
     for t, p in zip(y_true, y_pred):
         matrix[t - 1][p - 1] += 1
 
-    correct = sum(matrix[i][i] for i in range(5))
+    correct = sum(matrix[i][i] for i in range(4))
     total = len(y_true)
     oa = correct / total
 
@@ -232,7 +231,7 @@ def create_metric_fixture(out_dir: Path) -> dict[str, Any]:
     class_metrics = []
     for i, c in enumerate(classes):
         support = sum(matrix[i])
-        pred_count = sum(matrix[r][i] for r in range(5))
+        pred_count = sum(matrix[r][i] for r in range(4))
         tp = matrix[i][i]
         precision = tp / pred_count if pred_count > 0 else 0.0
         recall = tp / support if support > 0 else 0.0
@@ -248,7 +247,7 @@ def create_metric_fixture(out_dir: Path) -> dict[str, Any]:
     confusion_csv = out_dir / "confusion_matrix.csv"
     with open(confusion_csv, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["true_class", "pred_1", "pred_2", "pred_3", "pred_4", "pred_5"])
+        writer.writerow(["true_class", "pred_1", "pred_2", "pred_3", "pred_4"])
         for i, row in enumerate(matrix):
             writer.writerow([classes[i], *row])
 
