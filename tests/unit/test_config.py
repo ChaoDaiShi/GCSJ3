@@ -7,9 +7,10 @@ import pytest
 from rs_urban.config import load_context, get_repo_root
 
 
-def test_load_context_basic(repo_root: Path):
+def test_load_context_basic(repo_root: Path, tmp_path: Path):
     """Test basic loading of context from default configs."""
-    ctx = load_context(Path("configs/project.toml"), Path(".env"))
+    # Machine-local .env may point scratch to an external drive.
+    ctx = load_context(Path("configs/project.toml"), tmp_path / "absent.env")
     assert ctx.root == repo_root
     assert ctx.data == (repo_root / "data").resolve()
     assert ctx.outputs == (repo_root / "outputs").resolve()

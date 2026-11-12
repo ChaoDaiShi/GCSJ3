@@ -40,6 +40,10 @@ htmlcov/
 /qgis/*.qgd
 /qgis/*.qgz~
 
+# Web frontend build output and dependencies
+/web/node_modules/
+/web/dist/
+
 # Local catalog rows may contain local paths; header templates are tracked
 /data/catalog/*.csv
 !/data/catalog/*.example.csv

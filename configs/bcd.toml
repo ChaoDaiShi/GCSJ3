@@ -1,0 +1,58 @@
+# Additional experiments; does not change module A or select a winner on holdout.
+[classification]
+methods = ["svm", "rf", "stacking"]
+folds = 5
+chunk_size = 512
+svm_c = 10.0
+svm_gamma = "scale"
+stack_trees = 250
+object_smoothing = false
+crf = false
+slic_segments = 5000
+slic_compactness = 0.1
+crf_iterations = 5
+
+[analysis]
+# Explicit source: baseline, svm, rf, stacking, or stacking_obia/crf variants.
+source = "baseline"
+lei_buffer_m = 100.0
+connectivity = 4
+grid_size_m = 500.0
+minimum_grid_coverage = 0.8
+factor_bins = 5
+permutations = 199
+
+# Paths below are relative to RS_DATA_ROOT. External factor rasters must
+# already match A's 30m grid; missing inputs are recorded as pending.
+[[factors]]
+name = "river_distance"
+kind = "distance"
+path = "raw/drivers/rivers.gpkg"
+layer = "rivers"
+breaks = [200.0, 500.0, 1000.0, 2000.0]
+
+[[factors]]
+name = "road_distance"
+kind = "distance"
+path = "raw/drivers/roads_1992.gpkg"
+layer = "roads"
+breaks = [200.0, 500.0, 1000.0, 2000.0]
+
+[[factors]]
+name = "metro_distance"
+kind = "distance"
+path = "raw/drivers/metro_stations.gpkg"
+layer = "stations"
+breaks = [500.0, 1000.0, 2000.0, 5000.0]
+
+[[factors]]
+name = "protected_land"
+kind = "zone"
+path = "raw/drivers/protected_land.gpkg"
+layer = "protected_land"
+
+[[factors]]
+name = "planning_zone"
+kind = "zone"
+path = "raw/drivers/planning.gpkg"
+layer = "planning"
