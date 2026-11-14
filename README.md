@@ -2,6 +2,8 @@
 
 本项目采用 1992 年 Landsat 5 TM 与 2021 年 Landsat 8 OLI 夏季地表反射率影像，基于 Python 3.11、GDAL/Rasterio、scikit-learn 随机森林、GeoPandas 与 QGIS (3.44 LTR)，构建纯离线处理流水线，完成成都市新都区 29 年跨度的土地利用/覆被分类（4 类）、留出集精度评价、建设用地变化检测，以及 9 个街道/镇级行政单元的城市扩张时空定量分析。
 
+2026-11-12 新增 [B/C/D 优化入口与操作说明](docs/12-bcd-workflow.md)：分类消融与空间分组 Stacking、多维扩张分析、GeoDetector、六组制图和本机缺口报告。运行 `python -B src/06_bcd.py --step check` 检查本机输入；`--step all` 执行可运行阶段。当前克隆不含真实数据及生成物，下方历史成果记录不代表本机已完成重跑。
+
 ---
 
 ## 一、 项目实际现状与成果数字 (Current Status)
